@@ -1,3 +1,26 @@
+/*
+** serializer_internal.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 const char* UnicodeToString(const char* cc);
 const char* StringToUnicode(const char* cc, int size = -1);
@@ -231,7 +254,7 @@ FSerializer &SerializePointer(FSerializer &arc, const char *key, T *&value, T **
 {
 	assert(base != nullptr);
 	assert(count > 0);
-	if (arc.isReading() || !arc.w->inObject() || defval == nullptr || value != *defval)
+	if (!arc.canSkip() || defval == nullptr || value != *defval)
 	{
 		int64_t vv = -1;
 		if (value != nullptr)

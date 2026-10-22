@@ -1,33 +1,23 @@
 /*
+** v_video.cpp
+**
 ** Video basics and init code.
 **
 **---------------------------------------------------------------------------
-** Copyright 1999-2016 Randy Heit
+**
+** Copyright 1999-2016 Marisa Heit
 ** Copyright 2005-2016 Christoph Oelckers
-** All rights reserved.
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -65,6 +55,8 @@
 
 EXTERN_CVAR(Int, menu_resolution_custom_width)
 EXTERN_CVAR(Int, menu_resolution_custom_height)
+
+EXTERN_FARG(devparm);
 
 CVAR(Int, win_x, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int, win_y, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -150,9 +142,22 @@ CUSTOM_CVAR(Int, uiscale, 0, CVAR_ARCHIVE | CVAR_NOINITCALL)
 	setsizeneeded = true;
 }
 
+EXTERN_CVAR(Bool, r_blendmethod);
 
-
-EXTERN_CVAR(Bool, r_blendmethod)
+FARG(width, "Configuration", "Sets " GAMENAME "'s horizontal resolution.", "x",
+	"Specifies the desired resolution of the screen. If only one of -width or -height is"
+	" specified, " GAMENAME " will try to guess the other one based on a standard aspect ratio. If"
+	" the specified resolution is not supported by your SDL/DirectDraw drivers, " GAMENAME " will"
+	" try various resolutions until it either finds one that works, or it will finally give up. To"
+	" determine which resolutions " GAMENAME " can use, use the vid_describemodes command from the"
+	" console once you have started the game.");
+FARG(height, "Configuration", "Sets " GAMENAME "'s vertical resolution.", "y",
+	"Specifies the desired resolution of the screen. If only one of -width or -height is"
+	" specified, " GAMENAME " will try to guess the other one based on a standard aspect ratio. If"
+	" the specified resolution is not supported by your SDL/DirectDraw drivers, " GAMENAME " will"
+	" try various resolutions until it either finds one that works, or it will finally give up. To"
+	" determine which resolutions " GAMENAME " can use, use the vid_describemodes command from the"
+	" console once you have started the game.");
 
 int active_con_scale();
 
@@ -250,25 +255,12 @@ void DCanvas::Resize(int width, int height, bool optimizepitch)
 	}
 	else
 	{
-		// If we couldn't figure out the CPU's L1 cache line size, assume
-		// it's 32 bytes wide.
 		if (CPU.DataL1LineSize == 0)
 		{
-			CPU.DataL1LineSize = 32;
+			CPU.DataL1LineSize = CPUInfo::AssumedDefaultCacheLineSizeBytes;
 		}
-		// The Athlon and P3 have very different caches, apparently.
-		// I am going to generalize the Athlon's performance to all AMD
-		// processors and the P3's to all non-AMD processors. I don't know
-		// how smart that is, but I don't have a vast plethora of
-		// processors to test with.
-		if (CPU.bIsAMD)
-		{
-			Pitch = width + CPU.DataL1LineSize;
-		}
-		else
-		{
-			Pitch = width + max(0, CPU.DataL1LineSize - 8);
-		}
+		
+		Pitch = width + CPU.DataL1LineSize;
 	}
 	int bytes_per_pixel = Bgra ? 4 : 1;
 	Pixels.Resize(Pitch * height * bytes_per_pixel);
@@ -361,10 +353,10 @@ void V_InitScreenSize ()
 
 	width = height = bits = 0;
 
-	if ( (i = Args->CheckValue ("-width")) )
+	if ( (i = Args->CheckValue (FArg_width)) )
 		width = atoi (i);
 
-	if ( (i = Args->CheckValue ("-height")) )
+	if ( (i = Args->CheckValue (FArg_height)) )
 		height = atoi (i);
 
 	if (width == 0)
@@ -403,7 +395,7 @@ void V_Init2()
 
 	UCVarValue val;
 
-	val.Bool = !!Args->CheckParm("-devparm");
+	val.Bool = !!Args->CheckParm(FArg_devparm);
 	ticker->SetGenericRepDefault(val, CVAR_Bool);
 
 

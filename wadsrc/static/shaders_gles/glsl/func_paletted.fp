@@ -1,3 +1,18 @@
+/*
+** func_paletted.fp
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2018-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+*/
 const int RF_ShadeInterpolate = 64;
 
 const float pixleHalf = (1.0 / 256.0) / 2.0; // Half way through a pixel on 256 sized image

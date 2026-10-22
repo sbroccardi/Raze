@@ -1,33 +1,23 @@
 /*
 ** m_random.cpp
+**
 ** Random number generators
 **
 **---------------------------------------------------------------------------
-** Copyright 2002-2009 Randy Heit
-** All rights reserved.
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** Copyright 2002-2016 Marisa Heit
+** Copyright 2006-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 ** This file employs the techniques for improving demo sync and backward
@@ -388,19 +378,23 @@ FRandom *FRandom::StaticFindRNG (const char *name, bool client)
 	return probe;
 }
 
-void FRandom::SaveRNGState(TArray<FRandom>& backups)
+// Unlike the static read/write functions, this one assumes the RNG list has not been touched at all
+// and so will read/write even 0 NameCRC seeds since it goes in order.
+void FRandom::RollbackRNGState(FSerializer& arc)
 {
-	for (auto cur = RNGList; cur != nullptr; cur = cur->Next)
-		backups.Push(*cur);
-}
-
-void FRandom::RestoreRNGState(TArray<FRandom>& backups)
-{
-	unsigned int i = 0u;
-	for (auto cur = RNGList; cur != nullptr; cur = cur->Next)
-		*cur = backups[i++];
-
-	backups.Clear();
+	if (arc.BeginArray("rngs"))
+	{
+		for (FRandom* rng = FRandom::RNGList; rng != nullptr; rng = rng->Next)
+		{
+			if (arc.BeginObject(nullptr))
+			{
+				arc("index", rng->idx)
+					.Array("u", rng->sfmt.u, SFMT::N32)
+					.EndObject();
+			}
+		}
+		arc.EndArray();
+	}
 }
 
 //==========================================================================

@@ -6,20 +6,9 @@
 **---------------------------------------------------------------------------
 **
 ** Copyright 2025 Marcus Minhorst
-** Copyright 2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** This program is free software: you can redistribute it and/or modify
-** it under the terms of the GNU General Public License as published by
-** the Free Software Foundation, either version 3 of the License, or
-** (at your option) any later version.
-**
-** This program is distributed in the hope that it will be useful,
-** but WITHOUT ANY WARRANTY; without even the implied warranty of
-** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-** GNU General Public License for more details.
-**
-** You should have received a copy of the GNU General Public License
-** along with this program.  If not, see http://www.gnu.org/licenses/
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
 **---------------------------------------------------------------------------
 **
@@ -186,7 +175,7 @@ const FName * Joy_GuessMapping(const FName identifier)
 		{ &HapticMedium, { "success", "grunt", "land", "pain", "pkup", "pickup", "fist", "weapon",
 			"fire", "shoot", "blast", "attack", "launch", "punch" } },
 		{ &HapticLight, { "push", "menu", "use", "fail", "open", "close", "eject", "reload",
-			"charge", "try" } },
+			"charge", "try", "fart", "ready" } },
 		{ &HapticNone, { "step", "floor" } },
 	};
 
@@ -260,7 +249,7 @@ const FName * Joy_GetMapping(const FName identifier)
 	{
 		if (RumbleMissed.Contains(identifier)) return;
 		RumbleMissed.Push(identifier);
-		Printf(DMSG_WARNING|PRINT_NONOTIFY, "Unknown rumble mapping '%s'\n", identifier.GetChars());
+		Printf(PRINT_HIGH|PRINT_NONOTIFY, "Unknown rumble mapping '%s'\n", identifier.GetChars());
 	};
 
 	if (!mapping && identifier != "")

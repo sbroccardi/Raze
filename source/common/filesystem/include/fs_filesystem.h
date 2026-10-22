@@ -1,12 +1,28 @@
+/*
+** fs_filesystem.h
+**
+** File system  I/O functions.
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 1998-2016 Marisa Heit
+** Copyright 2005-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
-//-----------------------------------------------------------------------------
-//
-// DESCRIPTION:
-//	File system  I/O functions.
-//
-//-----------------------------------------------------------------------------
-
-
 
 #include "fs_files.h"
 #include "resourcefile.h"
@@ -42,8 +58,8 @@ public:
 	void SetMaxIwadNum(int x) { MaxIwadIndex = x; }
 
 	bool InitSingleFile(const char *filename, FileSystemMessageFunc Printf = nullptr);
-	bool InitMultipleFiles (std::vector<std::string>& filenames, LumpFilterInfo* filter = nullptr, FileSystemMessageFunc Printf = nullptr, bool allowduplicates = false);
-	void AddFile (const char *filename, FileReader *wadinfo, LumpFilterInfo* filter, FileSystemMessageFunc Printf);
+	bool InitMultipleFiles (std::vector<std::string>& filenames, std::vector<std::string>& optfilenames, LumpFilterInfo* filter = nullptr, FileSystemMessageFunc Printf = nullptr, bool allowduplicates = false);
+	void AddFile (const char *filename, FileReader *wadinfo, LumpFilterInfo* filter, FileSystemMessageFunc Printf, bool optional);
 	int CheckIfResourceFileLoaded (const char *name) noexcept;
 	void AddAdditionalFile(const char* filename, FileReader* wadinfo = NULL) {}
 
@@ -120,7 +136,7 @@ public:
 	static uint32_t LumpNameHash (const char *name);		// [RH] Create hash key from an 8-char name
 
 	ptrdiff_t FileLength (int lump) const;
-  uint32_t FileHash (int lump) const;
+	uint32_t FileHash (int lump) const;
 	int GetFileFlags (int lump);					// Return the flags for this lump
 	const char* GetFileShortName(int lump) const;
 	const char *GetFileFullName (int lump, bool returnshort = true) const;	// [RH] Returns the lump's full name
@@ -130,6 +146,7 @@ public:
 	void SetFileNamespace(int lump, int ns);
 	int GetResourceId(int lump) const;				// Returns the RFF index number for this lump
 	const char* GetResourceType(int lump) const;
+	const char* GetResourceHash(int wadNum) const;
 	bool CheckFileName (int lump, const char *name) const;	// [RH] Returns true if the names match
 	unsigned GetFilesInFolder(const char *path, std::vector<FolderEntry> &result, bool atomic) const;
 
@@ -141,6 +158,11 @@ public:
 	int GetNumWads() const
 	{
 		return (int)Files.size();
+	}
+
+	bool IsOptionalResource(int wadnum) const
+	{
+		return wadnum >= 0 && wadnum < (int)Files.size() ? Files[wadnum]->IsOptional() : true;
 	}
 
 	int AddFromBuffer(const char* name, char* data, int size, int id, int flags);

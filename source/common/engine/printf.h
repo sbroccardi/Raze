@@ -1,3 +1,27 @@
+/*
+** printf.h
+**
+**
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2006-2016 Marisa Heit
+** Copyright 2010-2016 Christoph Oelckers
+** Copyright 2020-2025 GZDoom Maintainers and Contributors
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
+**
+** SPDX-License-Identifier: GPL-3.0-or-later
+**
+**---------------------------------------------------------------------------
+**
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 #pragma once
 #include <stdarg.h>
 
@@ -65,6 +89,9 @@ enum
 	PRINT_NOLOG = 2048,		// Flag - do not print to log file
 	PRINT_NOTIFY = 4096,	// Flag - add to game-native notify display - messages without this only go to the generic notification buffer.
 	PRINT_NODAPEVENT = 8192, // Flag - do not emit the message as DAP debugger output.
+	PRINT_NOCONSOLE = 16384,// Flag - Don't add to console
+
+	PRINT_NOLOGCONSOLE = PRINT_NOLOG|PRINT_NOCONSOLE,
 };
 
 enum

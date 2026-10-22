@@ -1,35 +1,21 @@
 /*
 ** menu.zs
+**
 ** The menu engine core
 **
 **---------------------------------------------------------------------------
 **
 ** Copyright 2010-2020 Christoph Oelckers
 ** Copyright 2017-2025 GZDoom Maintainers and Contributors
-** All rights reserved.
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
 **
 **---------------------------------------------------------------------------
 **
@@ -193,6 +179,7 @@ class Menu : Object native ui version("2.4")
 	native double mTooltipScrollTimer;
 	native double mTooltipScrollOffset;
 	native Font mTooltipFont; // This is here so generic menus can still use it.
+	native bool DrawTooltips;
 
 	native static int MenuTime();
 	native static Menu GetCurrentMenu();
@@ -325,7 +312,7 @@ class Menu : Object native ui version("2.4")
 		return false;
 	}
 
-	virtual void GetTooltipArea(ScreenArea body, ScreenArea text = null)
+	version("4.15.1") virtual void GetTooltipArea(ScreenArea body, ScreenArea text = null)
 	{
 		int xPad = 10 * CleanXFac;
 		int yPad = 5 * CleanYFac;
@@ -348,7 +335,7 @@ class Menu : Object native ui version("2.4")
 			text.SetArea(body.x + xPad, body.y + yPad, body.width - xPad * 2, body.height - yPad * 2);
 	}
 
-	virtual void UpdateTooltip(string tooltip)
+	version("4.15.1") virtual void UpdateTooltip(string tooltip)
 	{
 		if (tooltip == mCurrentTooltip)
 			return;
@@ -358,13 +345,17 @@ class Menu : Object native ui version("2.4")
 		mTooltipScrollTimer = m_tooltip_delay;
 	}
 
-	virtual void DrawTooltip()
+	version("4.15.1") virtual void DrawTooltip()
 	{
-		if (mCurrentTooltip.IsEmpty())
-			return;
-
 		ScreenArea box, text;
 		GetTooltipArea(box, text);
+
+		Screen.Dim(0u, m_tooltip_alpha, box.x, box.y, box.width, box.height);
+		Color col = (int(255 * m_tooltip_alpha) << 24) | 0x404040;
+		Screen.DrawLineFrame(col, box.x, box.y, box.width, box.height, CleanXFac_1);
+
+		if (mCurrentTooltip.IsEmpty())
+			return;
 
 		DrawTextureTags scaleType;
 		int textXScale, textYScale;
@@ -406,10 +397,6 @@ class Menu : Object native ui version("2.4")
 				}
 			}
 		}
-
-		Screen.Dim(0u, m_tooltip_alpha, box.x, box.y, box.width, box.height);
-		Color col = (int(255 * m_tooltip_alpha) << 24) | 0x404040;
-		Screen.DrawLineFrame(col, box.x, box.y, box.width, box.height, CleanXFac_1);
 
 		let [cx, cy, cw, ch] = Screen.GetClipRect();
 		Screen.SetClipRect(text.x, text.y, text.width, text.height);
@@ -465,7 +452,7 @@ class Menu : Object native ui version("2.4")
 				}
 			}
 
-			if (m_tooltip_lines > 0)
+			if (DrawTooltips)
 				DrawTooltip();
 		}
 	}

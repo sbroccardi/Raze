@@ -122,28 +122,21 @@ struct FMapInfoParser
 	void CheckEndOfFile(const char *block);
 };
 
-#if defined(_MSC_VER)
-#pragma section(SECTION_YREG,read)
-#define MSVC_YSEG __declspec(allocate(SECTION_YREG))
-#define GCC_YSEG
-#else
-#define MSVC_YSEG
-#define GCC_YSEG __attribute__((section(SECTION_YREG))) __attribute__((used))
-#endif 
-
 #define DEFINE_MAP_OPTION(name, old) \
 	static void MapOptHandler_##name(FMapInfoParser &parse, MapRecord *info); \
 	static FMapOptInfo MapOpt_##name = \
 		{ #name, MapOptHandler_##name, old }; \
-	MSVC_YSEG FMapOptInfo *mapopt_##name GCC_YSEG = &MapOpt_##name; \
 	static void MapOptHandler_##name(FMapInfoParser &parse, MapRecord *info)
 
 
-struct FMapOptInfo
+struct FMapOptInfo : FAutoSegEntry<FMapOptInfo>
 {
 	const char *name;
 	void (*handler) (FMapInfoParser &parse, MapRecord *levelinfo);
 	bool old;
+
+	FMapOptInfo(const char *n, void (*h) (FMapInfoParser &, MapRecord *), bool o)
+	: FAutoSegEntry(AutoSegs::MapInfoOptions, this), name(n), handler(h), old(o) {}
 };
 
 

@@ -1,34 +1,22 @@
 /*
 ** optionmenu.zs
+**
 ** Handler class for the option menus and associated items
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2010-2017 Christoph Oelckers
 ** Copyright 2017-2025 GZDoom Maintainers and Contributors
-** All rights reserved.
+** Copyright 2025-2026 UZDoom Maintainers and Contributors
 **
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions
-** are met:
+** SPDX-License-Identifier: GPL-3.0-or-later
 **
-** 1. Redistributions of source code must retain the above copyright
-**    notice, this list of conditions and the following disclaimer.
-** 2. Redistributions in binary form must reproduce the above copyright
-**    notice, this list of conditions and the following disclaimer in the
-**    documentation and/or other materials provided with the distribution.
-** 3. The name of the author may not be used to endorse or promote products
-**    derived from this software without specific prior written permission.
+**---------------------------------------------------------------------------
 **
-** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+** Code written prior to 2026 is also licensed under:
+**
+** SPDX-License-Identifier: BSD-3-Clause
+**
 **---------------------------------------------------------------------------
 **
 */
@@ -129,7 +117,7 @@ class OptionMenu : Menu
 		AnimatedTransition = desc.mAnimatedTransition;
 		Animated = desc.mAnimated;
 		MaxItems = 1;
-		mTooltipFont = desc.mTooltipFont;
+		mTooltipFont = desc.mTooltipFont ? desc.mTooltipFont : NewConsoleFont;
 		mCurrentTooltip = "";
 		mTooltipScrollTimer = m_tooltip_delay;
 		mTooltipScrollOffset = 0.0;
@@ -159,7 +147,14 @@ class OptionMenu : Menu
 			}
 		}
 
-		if (mDesc.mSelectedItem == -1) mDesc.mSelectedItem = FirstSelectable();
+		if (mDesc.mSelectedItem == -1)
+		{
+			mDesc.mSelectedItem = FirstSelectable();
+			if (mDesc.mSelectedItem >= 0 && mDesc.mItems[mDesc.mSelectedItem].mLabel == "$OS_TITLE")
+			{
+				mDesc.mSelectedItem = FirstSelectable(mDesc.mSelectedItem);
+			}
+		}
 		mDesc.CalcIndent();
 
 		// notify all items that the menu was just created.
@@ -168,8 +163,17 @@ class OptionMenu : Menu
 			mDesc.mItems[i].OnMenuCreated();
 		}
 
-		if (mDesc.mSelectedItem >= 0)
-			UpdateTooltip(mDesc.mItems[mDesc.mSelectedItem].GetTooltip());
+		// Now that all items have been initialized, check if any have a tooltip to display.
+		foreach (item : mDesc.mItems)
+		{
+			if (item.GetTooltip().IsNotEmpty())
+			{
+				DrawTooltips = true;
+				break;
+			}
+		}
+
+		UpdateTooltip(GetSelectedTooltip());
 	}
 
 	//=============================================================================
@@ -177,6 +181,13 @@ class OptionMenu : Menu
 	//
 	//
 	//=============================================================================
+
+	version("4.15.1") string GetSelectedTooltip() const
+	{
+		return mDesc && mDesc.mSelectedItem >= 0 && mDesc.mSelectedItem < mDesc.mItems.Size() && mDesc.mItems[mDesc.mSelectedItem]
+				? mDesc.mItems[mDesc.mSelectedItem].GetTooltip()
+				: "";
+	}
 
 	override void UpdateTooltip(string tooltip)
 	{
@@ -187,7 +198,7 @@ class OptionMenu : Menu
 		Super.UpdateTooltip(tooltip);
 	}
 
-	virtual void DrawHoverTooltip(OptionMenuItemOptionBase selected, int indent, int y, int bottom)
+	version("4.15.1") virtual void DrawHoverTooltip(OptionMenuItemOptionBase selected, int indent, int y, int bottom)
 	{
 		if (!selected)
 			return;
@@ -212,7 +223,7 @@ class OptionMenu : Menu
 		int xPad = 10 * CleanXFac_1;
 		int yPad = 5 * CleanYFac_1;
 		int textHeight = mTooltipFont.GetHeight() * CleanYFac_1;
-		
+
 		int xCap, diff;
 		if (Screen.GetAspectRatio() > 16.0 / 9.0)
 		{
@@ -224,7 +235,7 @@ class OptionMenu : Menu
 			xCap = Screen.GetWidth();
 		}
 		xCap -= 11 * CleanXFac_1;
-		
+
 		int width = xCap - (indent - diff);
 		BrokenLines bl = mTooltipFont.BreakLines(StringTable.Localize(text), (width - xPad * 2) / CleanXFac_1);
 		int height = textHeight * bl.Count() + yPad * 2;
@@ -251,7 +262,7 @@ class OptionMenu : Menu
 					space = Abs(curY) - yPad - CleanXFac_1;
 					curY = CleanXFac_1;
 				}
-				
+
 				maxOffset = int(Ceil(double(space) / textHeight));
 				height -= textHeight * maxOffset;
 				if (mOptionValueTooltipScrollTimer <= 0.0)
@@ -325,17 +336,17 @@ class OptionMenu : Menu
 	//
 	//=============================================================================
 
-	int FirstSelectable()
+	int FirstSelectable(int start = -1)
 	{
 		// Go down to the first selectable item
-		int i = -1;
+		int i = start;
 		do
 		{
 			i++;
 		}
 		while (i < mDesc.mItems.Size() && !(mDesc.mItems[i].Selectable() && mDesc.mItems[i].Visible()));
 		if (i>=0 && i < mDesc.mItems.Size()) return i;
-		else return -1;
+		else return start;
 	}
 
 	//=============================================================================
@@ -429,7 +440,7 @@ class OptionMenu : Menu
 				if (firstLabelCharacter == key)
 				{
 					mDesc.mSelectedItem = index;
-					UpdateTooltip(mDesc.mItems[mDesc.mSelectedItem].GetTooltip());
+					UpdateTooltip(GetSelectedTooltip());
 					break;
 				}
 			}
@@ -471,7 +482,7 @@ class OptionMenu : Menu
 				mDesc.mSelectedItem = FirstSelectable();
 			}
 
-			UpdateTooltip(mDesc.mItems[mDesc.mSelectedItem].GetTooltip());
+			UpdateTooltip(GetSelectedTooltip());
 			return mDesc.mSelectedItem - startedAt;
 		}
 
@@ -603,7 +614,9 @@ class OptionMenu : Menu
 					while (visibleLinesToScroll < visibleLinesJumped && newScrollPos < mDesc.mItems.Size() - 1)
 					{
 						newScrollPos++;
-						if ((newScrollPos + mDesc.mScrollTop) < mDesc.mItems.Size() && mDesc.mItems[newScrollPos + mDesc.mScrollTop].Visible())
+
+						int tempIndex = newScrollPos + mDesc.mScrollTop;
+						if (tempIndex >= 0 && tempIndex < mDesc.mItems.Size() && mDesc.mItems[tempIndex].Visible())
 						{
 							visibleLinesToScroll++;
 						}
@@ -613,7 +626,7 @@ class OptionMenu : Menu
 			}
 		}
 
-		UpdateTooltip(mDesc.mItems[mDesc.mSelectedItem].GetTooltip());
+		UpdateTooltip(GetSelectedTooltip());
 		return mDesc.mSelectedItem - startedAt;
 	}
 
@@ -711,7 +724,7 @@ class OptionMenu : Menu
 			}
 		}
 
-		UpdateTooltip(mDesc.mItems[mDesc.mSelectedItem].GetTooltip());
+		UpdateTooltip(GetSelectedTooltip());
 		return mDesc.mSelectedItem - startedAt;
 	}
 
@@ -822,7 +835,7 @@ class OptionMenu : Menu
 						if (i != mDesc.mSelectedItem)
 						{
 							mDesc.mSelectedItem = i;
-							UpdateTooltip(mDesc.mItems[mDesc.mSelectedItem].GetTooltip());
+							UpdateTooltip(GetSelectedTooltip());
 							if (HoverSound) MenuSound ("menu/cursor");
 						}
 						mDesc.mItems[i].MouseEvent(type, x, y);
@@ -911,14 +924,13 @@ class OptionMenu : Menu
 
 		ScreenArea box;
 		GetTooltipArea(box);
-		if (m_tooltip_lines == 0)
-		{
+		if (!DrawTooltips)
 			box.y = Screen.GetHeight();
-		}
+
 		int ytop = y + mDesc.mScrollTop * 8 * CleanYfac_1;
 		LastRow = box.y - OptionHeight() * CleanYfac_1;
 		int rowheight = OptionMenuSettings.mLinespacing * CleanYfac_1 + 1;
-		
+
 		int _MaxItems = (LastRow - y) / rowheight + 1;
 		bool resized = _MaxItems != MaxItems;
 		MaxItems = _MaxItems;
@@ -960,7 +972,7 @@ class OptionMenu : Menu
 				}
 			}
 
-			y += rowheight;
+			y += fontheight;
 		}
 
 		lastVisible = LastVisibleItem();
