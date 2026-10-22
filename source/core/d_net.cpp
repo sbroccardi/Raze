@@ -446,7 +446,7 @@ void Net_PlayerReadiedUp(int player)
 
 void Net_StartCutscene()
 {
-	CutsceneCountdown = netgame && !demoplayback && net_cutscenecountdown > 0.0f ? static_cast<int>(ceil(net_cutscenecountdown * TICRATE)) : 0;
+	CutsceneCountdown = netgame && !demoplayback && net_cutscenecountdown > 0.0f ? static_cast<int>(ceil(net_cutscenecountdown * GameTicRate)) : 0;
 }
 
 // Allow the game to automatically start after a set amount of time.
@@ -795,7 +795,7 @@ static void CheckLevelStart(int client, int delayTics)
 		{
 			int delay = 0;
 			if (client != Net_Arbitrator)
-				delay = int(floor((highestAvg - min<uint16_t>(ClientStates[client].AverageLatency, LatencyCap)) * MS2Sec * TICRATE));
+				delay = int(floor((highestAvg - min<uint16_t>(ClientStates[client].AverageLatency, LatencyCap)) * MS2Sec * GameTicRate));
 
 			NetBuffer[2] = (delay << 8);
 			NetBuffer[3] = delay;
@@ -1179,7 +1179,7 @@ static bool Net_UpdateStatus()
 	// Wait for the game to stabilize a bit after launch before skipping commands.
 	bool updated = false;
 	int lowestDiff = INT_MAX;
-	if (gametic > TICRATE * 2 && !(gametic % TicDup))
+	if (gametic > GameTicRate * 2 && !(gametic % TicDup))
 	{
 		if (consoleplayer == Net_Arbitrator)
 		{
@@ -1229,7 +1229,7 @@ static bool Net_UpdateStatus()
 		lowestDiff -= StabilityBuffer;
 		if (lowestDiff > 0)
 		{
-			if (SkipCommandTimer++ > TICRATE / 2)
+			if (SkipCommandTimer++ > GameTicRate / 2)
 			{
 				SkipCommandTimer = 0;
 				if (SkipCommandAmount <= 0)
@@ -1987,9 +1987,9 @@ ADD_STAT(network)
 		out.AppendFormat("\tStart tics delay: %d", LevelStartDebug);
 
 	const int delay = max<int>((ClientTic - gametic) / TicDup, 0);
-	const int msDelay = min<int>(delay * TicDup * 1000.0 / TICRATE, 999);
+	const int msDelay = min<int>(delay * TicDup * 1000.0 / GameTicRate, 999);
 	const int buffer = max<int>(StabilityBuffer, 0);
-	const int msBuffer = min<int>(buffer * 1000.0 / TICRATE, 999);
+	const int msBuffer = min<int>(buffer * 1000.0 / GameTicRate, 999);
 	out.AppendFormat("\nLocal\n\tIs arbitrator: %d\tDelay: %02d (%03dms)\tStability Buffer: %02d (%03dms)",
 		consoleplayer == Net_Arbitrator,
 		delay, msDelay,
@@ -2187,6 +2187,21 @@ void TryRunTics()
 			lowestSequence = ClientStates[client].CurrentSequence;
 	}
 
+	// Test player prediction code in singleplayer by pretending there is another player
+	// that is running exactly x ticks behind us, emulating having a specific amount of ping
+	if (cl_debugprediction > 0
+		&& !netgame && !demoplayback) // would probably function, but there's no reason to
+	{
+		if (lowestSequence > cl_debugprediction)
+		{
+			lowestSequence -= cl_debugprediction;
+		}
+		else
+		{
+			lowestSequence = 0;
+		}
+	}
+
 	// If the lowest confirmed tic matches the server gametic or greater, allow the client
 	// to run some of them.
 	const int availableTics = (lowestSequence - gametic / TicDup) + 1;
@@ -2199,18 +2214,6 @@ void TryRunTics()
 		CalculateNetStabilityBuffer(availableTics - totalTics);
 		if (totalTics < availableTics - StabilityBuffer)
 			++runTics;
-	}
-
-	// Test player prediction code in singleplayer
-	// by running the gametic behind the ClientTic
-	if (!netgame && !demoplayback && cl_debugprediction > 0)
-	{
-		int debugTarget = ClientTic - cl_debugprediction;
-		int debugOffset = gametic - debugTarget;
-		if (debugOffset > 0)
-		{
-			runTics = max<int>(runTics - debugOffset, 0);
-		}
 	}
 
 	// If there are no tics to run, check for possible stall conditions and new
@@ -2388,7 +2391,7 @@ TArrayView<uint8_t> FDynamicBuffer::GetTArrayView()
 // This was taken out of shared_hud, because UI code shouldn't do low level calculations that may change if the backing implementation changes.
 int Net_GetLatency(int* localDelay, int* arbitratorDelay)
 {
-	const int gameDelayMs = (ClientTic - gametic) * 1000 / TICRATE;
+	const int gameDelayMs = (ClientTic - gametic) * 1000 / GameTicRate;
 	int severity = 0;
 	if (gameDelayMs >= 160)
 		severity = 3;

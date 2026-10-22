@@ -70,7 +70,7 @@ static const char* validexts[] = { "*.grp", "*.zip", "*.pk3", "*.pk4", "*.7z", "
 //
 //==========================================================================
 
-static std::vector<std::string> ParseGameInfo(std::vector<std::string>& pwads, const char* fn, const char* data, int size)
+static std::vector<std::string> ParseGameInfo(std::vector<FileSys::ResourceName>& pwads, const char* fn, const char* data, int size)
 {
 	FScanner sc;
 	std::vector<std::string> bases;
@@ -111,11 +111,11 @@ static std::vector<std::string> ParseGameInfo(std::vector<std::string>& pwads, c
 				}
 				if (!FileExists(checkpath))
 				{
-					pos += D_AddFile(pwads, sc.String, true, pos, GameConfig);
+					pos += D_AddFile(pwads, sc.String, true, pos, GameConfig, false);
 				}
 				else
 				{
-					pos += D_AddFile(pwads, checkpath.GetChars(), true, pos, GameConfig);
+					pos += D_AddFile(pwads, checkpath.GetChars(), true, pos, GameConfig, false);
 				}
 			} while (sc.CheckToken(','));
 		}
@@ -159,7 +159,7 @@ static std::vector<std::string> ParseGameInfo(std::vector<std::string>& pwads, c
 //
 //==========================================================================
 
-static std::vector<std::string> CheckGameInfo(std::vector<std::string>& pwads)
+static std::vector<std::string> CheckGameInfo(std::vector<FileSys::ResourceName>& pwads)
 {
 #if 1
 	// scan the list of WADs backwards to find the last one that contains a GAMEINFO lump
@@ -167,10 +167,10 @@ static std::vector<std::string> CheckGameInfo(std::vector<std::string>& pwads)
 	{
 		bool isdir = false;
 		FResourceFile* resfile;
-		const char* filename = pwads[i].c_str();
+		const char* filename = pwads[i].Name.c_str();
 
 		// Does this exist? If so, is it a directory?
-		if (!DirEntryExists(pwads[i].c_str(), &isdir))
+		if (!DirEntryExists(pwads[i].Name.c_str(), &isdir))
 		{
 			Printf(TEXTCOLOR_RED "Could not find %s\n", filename);
 			continue;
@@ -220,17 +220,17 @@ static std::vector<std::string> CheckGameInfo(std::vector<std::string>& pwads)
 
 std::vector<std::string> GetGameFronUserFiles()
 {
-	std::vector<std::string> Files;
+	std::vector<FileSys::ResourceName> Files;
 
 	if (userConfig.AddFilesPre) for (auto& file : *userConfig.AddFilesPre)
 	{
-		D_AddFile(Files, file.GetChars(), true, -1, GameConfig);
+		D_AddFile(Files, file.GetChars(), true, -1, GameConfig, false);
 	}
 	if (userConfig.AddFiles)
 	{
 		for (auto& file : *userConfig.AddFiles)
 		{
-			D_AddFile(Files, file.GetChars(), true, -1, GameConfig);
+			D_AddFile(Files, file.GetChars(), true, -1, GameConfig, false);
 		}
 
 		// Finally, if the last entry in the chain is a directory, it's being considered the mod directory, and all GRPs inside need to be loaded, too.
@@ -241,11 +241,11 @@ std::vector<std::string> GetGameFronUserFiles()
 			if (DirEntryExists(fn.GetChars(), &isdir) && isdir)
 			{
 				// Insert the GRPs before this entry itself.
-				std::string lastfn = std::move(Files.back());
+				auto lastfn = std::move(Files.back());
 				Files.pop_back();
 				for (auto ext : validexts)
 				{
-					D_AddDirectory(Files, fn.GetChars(), ext, GameConfig);
+					D_AddDirectory(Files, fn.GetChars(), ext, GameConfig, false);
 				}
 				Files.push_back(std::move(lastfn));
 			}
@@ -336,11 +336,11 @@ static int FileSystemPrintf(FSMessageLevel level, const char* fmt, ...)
 void InitFileSystem(TArray<GrpEntry>& groups)
 {
 	TArray<int> dependencies;
-	std::vector<std::string> Files;
+	std::vector<FileSys::ResourceName> Files;
 
 	// First comes the engine's own stuff.
 	const char* baseres = BaseFileSearch(ENGINERES_FILE, nullptr, true, GameConfig);
-	D_AddFile(Files, baseres, true, -1, GameConfig);
+	D_AddFile(Files, baseres, true, -1, GameConfig, false);
 
 	bool insertdirectoriesafter = Args->CheckParm(FArg_insertdirafter);
 
@@ -354,7 +354,7 @@ void InitFileSystem(TArray<GrpEntry>& groups)
 		// This can be overridden via command line switch if needed.
 		if (!grp.FileInfo.loaddirectory && grp.FileName.IsNotEmpty())
 		{
-			D_AddFile(Files, grp.FileName.GetChars(), true, -1, GameConfig);
+			D_AddFile(Files, grp.FileName.GetChars(), true, -1, GameConfig, false);
 			fn = ExtractFilePath(grp.FileName.GetChars());
 			if (fn.Len() > 0 && fn.Back() != '/') fn += '/';
 		}
@@ -362,7 +362,7 @@ void InitFileSystem(TArray<GrpEntry>& groups)
 		for (auto& fname : grp.FileInfo.loadfiles)
 		{
 			FString newname = fn + fname;
-			D_AddFile(Files, newname.GetChars(), true, -1, GameConfig);
+			D_AddFile(Files, newname.GetChars(), true, -1, GameConfig, false);
 		}
 		bool insert = (!insertdirectoriesafter && &grp == &groups[0]) || (insertdirectoriesafter && &grp == &groups.Last());
 
@@ -373,10 +373,10 @@ void InitFileSystem(TArray<GrpEntry>& groups)
 			// Do this only if explicitly requested because this severely limits the usability of GRP files.
 			if (insertdirectoriesafter && userConfig.AddFilesPre) for (auto& file : *userConfig.AddFilesPre)
 			{
-				D_AddFile(Files, file.GetChars(), true, -1, GameConfig);
+				D_AddFile(Files, file.GetChars(), true, -1, GameConfig, false);
 			}
 
-			D_AddFile(Files, fn.GetChars(), true, -1, GameConfig);
+			D_AddFile(Files, fn.GetChars(), true, -1, GameConfig, false);
 		}
 		i--;
 	}
@@ -385,7 +385,7 @@ void InitFileSystem(TArray<GrpEntry>& groups)
 
 	if (!Args->CheckParm(FArg_noautoload))
 	{
-		D_AddConfigFiles(Files, "Global.Autoload", "*.grp", GameConfig);
+		D_AddConfigFiles(Files, "Global.Autoload", "*.grp", GameConfig, false);
 
 		size_t len;
 		size_t lastpos = 0;
@@ -393,20 +393,20 @@ void InitFileSystem(TArray<GrpEntry>& groups)
 		while (lastpos < LumpFilter.Len() && (len = strcspn(LumpFilter.GetChars() + lastpos, ".")) > 0)
 		{
 			auto file = LumpFilter.Left(len + lastpos) + ".Autoload";
-			D_AddConfigFiles(Files, file.GetChars(), "*.grp", GameConfig);
+			D_AddConfigFiles(Files, file.GetChars(), "*.grp", GameConfig, false);
 			lastpos += len + 1;
 		}
 	}
 
 	if (!insertdirectoriesafter && userConfig.AddFilesPre) for (auto& file : *userConfig.AddFilesPre)
 	{
-		D_AddFile(Files, file.GetChars(), true, -1, GameConfig);
+		D_AddFile(Files, file.GetChars(), true, -1, GameConfig, false);
 	}
 	if (userConfig.AddFiles)
 	{
 		for (auto& file : *userConfig.AddFiles)
 		{
-			D_AddFile(Files, file.GetChars(), true, -1, GameConfig);
+			D_AddFile(Files, file.GetChars(), true, -1, GameConfig, false);
 		}
 
 		// Finally, if the last entry in the chain is a directory, it's being considered the mod directory, and all GRPs inside need to be loaded, too.
@@ -417,11 +417,11 @@ void InitFileSystem(TArray<GrpEntry>& groups)
 			if (DirEntryExists(fname.GetChars(), &isdir) && isdir)
 			{
 				// Insert the GRPs before this entry itself.
-				std::string lastfn = std::move(Files.back());
+				auto lastfn = std::move(Files.back());
 				Files.pop_back();
 				for (auto ext : validexts)
 				{
-					D_AddDirectory(Files, fname.GetChars(), ext, GameConfig);
+					D_AddDirectory(Files, fname.GetChars(), ext, GameConfig, false);
 				}
 				Files.push_back(std::move(lastfn));
 			}
@@ -453,8 +453,7 @@ void InitFileSystem(TArray<GrpEntry>& groups)
 	{
 		DeleteStuff(fileSystem, todelete, groups.Size());
 	};
-	std::vector<std::string> noOptionalFiles;
-	fileSystem.InitMultipleFiles(Files, noOptionalFiles, &lfi, FileSystemPrintf);
+	fileSystem.InitMultipleFiles(Files, &lfi, FileSystemPrintf);
 	if (Args->CheckParm(FArg_dumpfs))
 	{
 		FILE* f = fopen("filesystem.dir", "wb");

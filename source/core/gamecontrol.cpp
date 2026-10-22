@@ -1124,9 +1124,9 @@ int RunGame()
 
 	// load strings for picker window.
 	FileSys::FileSystem lang_fs;
-	std::vector<std::string> base_fn = { wad };
-	std::vector<std::string> no_optional_files;
-	lang_fs.InitMultipleFiles(base_fn, no_optional_files);
+	std::string wadname = wad;
+	std::vector<FileSys::ResourceName> base_fn = { FileSys::ResourceName(wadname, false) };
+	lang_fs.InitMultipleFiles(base_fn);
 	GStrings.LoadStrings(lang_fs, language);
 
 	// Set up the console before anything else so that it can receive text.
@@ -1458,7 +1458,7 @@ CCMD (togglemsg)
 			const char *statestr = argv.argc() <= 2? "*" : argv[2];
 			if (*statestr == '*')
 			{
-				Printf(PRINT_MEDIUM|PRINT_NOTIFY, "\"%s\" = \"%s\"\n", var->GetName(), val.Bool ? "true" : "false");
+				Printf(PrintFlag(PRINT_MEDIUM|PRINT_NOTIFY), "\"%s\" = \"%s\"\n", var->GetName(), val.Bool ? "true" : "false");
 			}
 			else
 			{
@@ -1469,7 +1469,7 @@ CCMD (togglemsg)
 					// Positive means Off/On, negative means On/Off
 					int quote = state > 0? state + val.Bool : -(state + val.Bool);
 					auto text = quoteMgr.GetQuote(quote);
-					if (text) Printf(PRINT_MEDIUM|PRINT_NOTIFY, "%s\n", text);
+					if (text) Printf(PrintFlag(PRINT_MEDIUM|PRINT_NOTIFY), "%s\n", text);
 				}
 			}
 		}
@@ -1749,7 +1749,7 @@ void I_UpdateWindowTitle()
 		titlestr = GameStartupInfo.Name;
 		break;
 	default:
-		I_UpdateDiscordPresence(false, NULL, GameStartupInfo.DiscordAppId.GetChars(), GameStartupInfo.SteamAppId.GetChars());
+		I_UpdateDiscordPresence(false, NULL, "" /* no game-specific Discord app id */, GameStartupInfo.SteamAppId.GetChars());
 		I_SetWindowTitle(NULL);
 		return;
 	}
@@ -1780,7 +1780,7 @@ void I_UpdateWindowTitle()
 	}
 	*dstp = 0;
 	if (i_discordrpc)
-		I_UpdateDiscordPresence(true, copy.Data(), GameStartupInfo.DiscordAppId.GetChars(), GameStartupInfo.SteamAppId.GetChars());
+		I_UpdateDiscordPresence(true, copy.Data(), "" /* no game-specific Discord app id */, GameStartupInfo.SteamAppId.GetChars());
 	else
 		I_UpdateDiscordPresence(false, nullptr, nullptr, nullptr);
 	I_SetWindowTitle(copy.Data());

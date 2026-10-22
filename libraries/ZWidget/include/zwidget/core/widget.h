@@ -13,6 +13,7 @@
 class Canvas;
 class Timer;
 class Dropdown;
+class PushButton;
 
 enum class WidgetType
 {
@@ -31,7 +32,7 @@ enum class WidgetEvent
 class Widget : DisplayWindowHost
 {
 public:
-	Widget(Widget* parent = nullptr, WidgetType type = WidgetType::Child, RenderAPI api = RenderAPI::Unspecified);
+	Widget(Widget* parent = nullptr, WidgetType type = WidgetType::Child, RenderAPI api = RenderAPI::Unspecified, bool windowResizable = true);
 	virtual ~Widget();
 
 	void SetParent(Widget* parent);
@@ -130,15 +131,15 @@ public:
 	void SetPointerCapture();
 	void ReleasePointerCapture();
 
-	void SetModalCapture();
-	void ReleaseModalCapture();
+	void SetModalCapture(bool rootWindow = false);
+	void ReleaseModalCapture(bool rootWindow = false);
 
 	bool GetKeyState(InputKey key);
 
 	std::string GetClipboardText();
 	void SetClipboardText(const std::string& text);
 
-	Widget* Window() const;
+	Widget* Window(bool rootWindow = false) const;
 	Canvas* GetCanvas() const;
 	Widget* ChildAt(double x, double y) { return ChildAt(Point(x, y)); }
 	Widget* ChildAt(const Point& pos);
@@ -166,6 +167,8 @@ public:
 	void* GetNativeHandle();
 	int GetNativePixelWidth();
 	int GetNativePixelHeight();
+	virtual double GetPreferredWidth();
+	virtual double GetPreferredHeight();
 
 	// Vulkan support:
 	std::vector<std::string> GetVulkanInstanceExtensions() { return Window()->DispWindow->GetVulkanInstanceExtensions(); }
@@ -214,6 +217,7 @@ private:
 	void OnWindowActivated() override;
 	void OnWindowDeactivated() override;
 	void OnWindowDpiScaleChanged() override;
+	bool OnFileDrop(std::string path) override;
 
 	void NotifySubscribers(const WidgetEvent type);
 
@@ -259,4 +263,5 @@ private:
 	friend class OpenFolderDialog;
 	friend class SaveFileDialog;
 	friend class Dropdown;
+	friend class PushButton;
 };

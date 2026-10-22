@@ -1,6 +1,6 @@
 // Raze specific names
 xx(0)
-xx(no)
+xx(No)
 xx(IngameMenu)
 xx(ListMenuItemBloodDripDrawer)
 xx(UsermapMenu)

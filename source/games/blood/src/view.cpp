@@ -205,18 +205,18 @@ void viewSetSystemMessage(const char* pMessage, ...) {
 	char buffer[1024]; va_list args; va_start(args, pMessage);
 	vsprintf(buffer, pMessage, args);
 
-	Printf(PRINT_HIGH | PRINT_NOTIFY, "%s\n", buffer); // print it also in console
+	Printf(PrintFlag(PRINT_HIGH | PRINT_NOTIFY), "%s\n", buffer); // print it also in console
 }
 
 void viewSetMessage(const char* pMessage, const char* color, const MESSAGE_PRIORITY priority)
 {
 	int printlevel = priority <= MESSAGE_PRIORITY_NORMAL ? PRINT_LOW : priority < MESSAGE_PRIORITY_SYSTEM ? PRINT_MEDIUM : PRINT_HIGH;
-	Printf(printlevel | PRINT_NOTIFY, "%s%s\n", color? color : TEXTCOLOR_TAN, pMessage);
+	Printf(PrintFlag(printlevel | PRINT_NOTIFY), "%s%s\n", color? color : TEXTCOLOR_TAN, pMessage);
 }
 
 void viewSetErrorMessage(const char* pMessage)
 {
-	Printf(PRINT_BOLD | PRINT_NOTIFY, "%s\n", pMessage);
+	Printf(PrintFlag(PRINT_BOLD | PRINT_NOTIFY), "%s\n", pMessage);
 }
 
 //---------------------------------------------------------------------------

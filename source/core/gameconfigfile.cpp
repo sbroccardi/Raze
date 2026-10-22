@@ -45,6 +45,8 @@
 #include "gamecontrol.h"
 #include "version.h"
 #include "vm.h"
+#include "m_misc.h"
+#include "i_system.h"
 
 #define LASTRUNVERSION "4"
 
@@ -667,6 +669,23 @@ DEFINE_ACTION_FUNCTION_NATIVE(_CVar, SaveConfig, SaveConfig)
 {
 	PARAM_PROLOGUE;
 	ACTION_RETURN_INT(SaveConfig());
+}
+
+// Used by the error window to open the folders a user may need.
+void M_OpenConfigDir()
+{
+	SaveConfig();
+	if (GameConfig) I_OpenShellFolder(ExtractFilePath(GameConfig->GetPathName()).GetChars());
+}
+
+void M_OpenWadDir()
+{
+	FString path = M_GetAppDataPath(true);
+	if (path.Len() > 0 && path.Back() != '/' && path.Back() != '\\')
+		path += '/';
+	path = NicePath(path.GetChars());
+	CreatePath(path.GetChars());
+	I_OpenShellFolder(path.GetChars());
 }
 
 void G_SaveConfig()

@@ -911,7 +911,7 @@ set (FASTMATH_SOURCES ${FASTMATH_SOURCES})
 
 set (PCH_SOURCES
 
-	common/thirdparty/richpresence.cpp
+	core/richpresence.cpp
 
 	thirdparty/src/md4.cpp
 
@@ -1009,6 +1009,8 @@ set (PCH_SOURCES
 	widgets/themedata.cpp
 	widgets/widgetresourcedata.cpp
 	utility/colorspace.cpp
+	utility/name.cpp
+	utility/system_theme.cpp
 
 	common/audio/sound/i_sound.cpp
 	common/audio/sound/oalsound.cpp
@@ -1026,7 +1028,6 @@ set (PCH_SOURCES
 	common/2d/wipe.cpp
 	common/thirdparty/animlib.cpp
 	common/thirdparty/gain_analysis.cpp
-	common/thirdparty/sfmt/SFMT.cpp
 	common/startscreen/startscreen.cpp
 	common/startscreen/startscreen_heretic.cpp
 	common/startscreen/startscreen_hexen.cpp
@@ -1102,7 +1103,7 @@ set (PCH_SOURCES
 	common/cutscenes/screenjob.cpp
 	common/utility/engineerrors.cpp
 	common/utility/i_module.cpp
-	common/utility/gitinfo.cpp
+	core/gitinfo.cpp
 	common/utility/m_alloc.cpp
 	common/utility/utf8.cpp
 	common/utility/palette.cpp
@@ -1112,7 +1113,6 @@ set (PCH_SOURCES
 	common/utility/i_time.cpp
 	common/utility/m_argv.cpp
 	common/utility/s_playlist.cpp
-	common/utility/name.cpp
 	common/utility/r_memory.cpp
 	common/utility/writezip.cpp
 	common/utility/vga2ansi.cpp
@@ -1314,7 +1314,7 @@ if( UNIX )
 	endif()
 endif()
 
-target_link_libraries( ${PROJECT_NAME} ${PROJECT_LIBRARIES} ${ZMUSIC_LIBRARIES} lzma )
+target_link_libraries( ${PROJECT_NAME} ${PROJECT_LIBRARIES} ${ZMUSIC_LIBRARIES} lzma absl::base absl::flat_hash_map absl::strings absl::hash )
 
 include_directories(
 	BEFORE
@@ -1374,6 +1374,7 @@ include_directories(
 	common/scripting/frontend
 	common/scripting/backend
 	widgets
+	utility
 	../libraries/ZVulkan/include
 	../libraries/ZWidget/include
 	../libraries/webp/include
@@ -1585,7 +1586,6 @@ source_group("Common\\Textures\\Formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SO
 source_group("Common\\Third Party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/.+")
 source_group("Common\\Third Party\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/math/.+")
 source_group("Common\\Third Party\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/rapidjson/.+")
-source_group("Common\\Third Party\\SFMT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/sfmt/.+")
 source_group("Common\\Third Party\\stb" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/stb/.+")
 source_group("Common\\Third Party\\utf8proc" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/utf8proc/.+")
 source_group("Utility\\Smackerdec" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/smackerdec/.+")

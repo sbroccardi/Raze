@@ -247,7 +247,7 @@ void evSend(EventObject& eob, int rxId, COMMAND_ID command, DBloodActor* initiat
 			{
 				int nType = command - kCmdNumberic;
 				if (nType < 0)
-					Printf(PRINT_HIGH | PRINT_NOTIFY, "Invalid secret type %d triggered.\n", nType);
+					Printf(PrintFlag(PRINT_HIGH | PRINT_NOTIFY), "Invalid secret type %d triggered.\n", nType);
 				else
 				{
 					if (nType == 0)

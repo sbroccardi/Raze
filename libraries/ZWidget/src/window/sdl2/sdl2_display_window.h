@@ -8,7 +8,7 @@
 class SDL2DisplayWindow : public DisplayWindow
 {
 public:
-	SDL2DisplayWindow(DisplayWindowHost* windowHost, bool popupWindow, SDL2DisplayWindow* owner, RenderAPI renderAPI, double uiscale);
+	SDL2DisplayWindow(DisplayWindowHost* windowHost, bool popupWindow, SDL2DisplayWindow* owner, RenderAPI renderAPI, double uiscale, bool resizable);
 	~SDL2DisplayWindow();
 
 	void SetWindowTitle(const std::string& text) override;
@@ -16,6 +16,7 @@ public:
 	void SetWindowFrame(const Rect& box) override;
 	void SetClientFrame(const Rect& box) override;
 	void Show() override;
+	void Restore() override;
 	void ShowFullscreen() override;
 	void ShowMaximized() override;
 	void ShowMinimized() override;
@@ -68,6 +69,7 @@ public:
 	void OnMouseMotion(const SDL_MouseMotionEvent& event);
 	void OnJoyButtonUp(const SDL_ControllerButtonEvent& event);
 	void OnJoyButtonDown(const SDL_ControllerButtonEvent& event);
+	void OnFileDrop(const SDL_DropEvent& event);
 	void OnPaintEvent();
 	static void OnTimerEvent(const SDL_UserEvent& event);
 

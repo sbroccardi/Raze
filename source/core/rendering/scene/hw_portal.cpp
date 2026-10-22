@@ -34,7 +34,11 @@
 #include "texturemanager.h"
 #include "gamestruct.h"
 
-EXTERN_CVAR(Int, r_mirror_recursions)
+CUSTOM_CVAR(Int, r_mirror_recursions,4,CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
+{
+	if (self<0) self=0;
+	if (self>10) self=10;
+}
 EXTERN_CVAR(Bool, gl_portals)
 
 //-----------------------------------------------------------------------------

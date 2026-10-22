@@ -209,13 +209,13 @@ CCMD (togglemessages)
 {
 	if (hud_messages)
 	{
-		Printf(PRINT_MEDIUM | PRINT_NOTIFY, "%s\n", quoteMgr.GetQuote(24));
+		Printf(PrintFlag(PRINT_MEDIUM | PRINT_NOTIFY), "%s\n", quoteMgr.GetQuote(24));
 		hud_messages = false;
 	}
 	else
 	{
 		hud_messages = true;
-		Printf(PRINT_MEDIUM | PRINT_NOTIFY, "%s\n", quoteMgr.GetQuote(23));
+		Printf(PrintFlag(PRINT_MEDIUM | PRINT_NOTIFY), "%s\n", quoteMgr.GetQuote(23));
 	}
 }
 
@@ -235,7 +235,7 @@ CCMD(togglemouseaim)
 	in_mousemode = !in_mousemode;
 	if (!silentmouseaimtoggle)
 	{
-		Printf(PRINT_MEDIUM|PRINT_NOTIFY, "%s\n", in_mousemode? GStrings.GetString("TXT_MOUSEAIMON") : GStrings.GetString("TXT_MOUSEAIMOFF"));
+		Printf(PrintFlag(PRINT_MEDIUM|PRINT_NOTIFY), "%s\n", in_mousemode? GStrings.GetString("TXT_MOUSEAIMON") : GStrings.GetString("TXT_MOUSEAIMOFF"));
 	}
 }
 

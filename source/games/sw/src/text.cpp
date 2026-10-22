@@ -48,7 +48,7 @@ BEGIN_SW_NS
 void PutStringInfo(DSWPlayer* pp, const char *string)
 {
     if (pp->pnum == myconnectindex)
-        Printf(PRINT_MEDIUM|PRINT_NOTIFY, "%s\n", string); // Put it in the console too
+        Printf(PrintFlag(PRINT_MEDIUM|PRINT_NOTIFY), "%s\n", string); // Put it in the console too
 }
 
 END_SW_NS

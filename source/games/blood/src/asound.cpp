@@ -137,7 +137,7 @@ void ambInit(void)
             auto snd = soundEngine->FindSoundByResID(nSFX);
             if (!snd.isvalid()) 
             {
-                Printf(PRINT_HIGH | PRINT_NOTIFY, "Missing sound #%d used in ambient sound generator #%d\n", nSFX, actor->GetIndex());
+                Printf(PrintFlag(PRINT_HIGH | PRINT_NOTIFY), "Missing sound #%d used in ambient sound generator #%d\n", nSFX, actor->GetIndex());
                 actPostSprite(actor, kStatDecoration);
                 continue;
             }

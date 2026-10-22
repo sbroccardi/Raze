@@ -115,7 +115,7 @@ void FTA(int q, DDukePlayer* p)
 			else
 #endif
 			{
-				Printf(PRINT_MEDIUM | PRINT_NOTIFY, "%s\n", qu);
+				Printf(PrintFlag(PRINT_MEDIUM | PRINT_NOTIFY), "%s\n", qu);
 			}
 		}
 	}

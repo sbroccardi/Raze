@@ -5549,7 +5549,7 @@ void DoPlayerDeathMessage(DSWPlayer* pp, DSWPlayer* killer)
         TRAVERSE_CONNECT(pnum)
         {
             if (pnum == myconnectindex)
-                Printf(PRINT_NOTIFY|PRINT_TEAMCHAT, "%s\n", ds);
+                Printf(PrintFlag(PRINT_NOTIFY|PRINT_TEAMCHAT), "%s\n", ds);
             else
                 SW_SendMessage(pnum, ds);
         }
