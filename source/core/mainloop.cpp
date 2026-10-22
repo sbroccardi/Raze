@@ -60,8 +60,6 @@
 //-----------------------------------------------------------------------------
 
 
-#include <chrono>
-#include <thread>
 #include "c_cvars.h"
 #include "i_time.h"
 #include "d_net.h"
@@ -100,9 +98,6 @@ CVAR(Bool, cl_resumesavegame, true, CVAR_ARCHIVE)
 EXTERN_CVAR (Bool, vid_vsync)
 EXTERN_CVAR (Int, vid_maxfps)
 
-static uint64_t stabilityticduration = 0;
-static uint64_t stabilitystarttime = 0;
-
 DCorePlayer* PlayerArray[MAXPLAYERS];
 
 IMPLEMENT_CLASS(DCorePlayer, true, true)
@@ -136,19 +131,18 @@ FString	savegamefile;
 //
 //==========================================================================
 
-void G_BuildTiccmd(ticcmd_t* cmd) 
+void G_BuildTiccmd(usercmd_t* cmd) 
 {
 	if (sendsave)
 	{
 		sendsave = false;
-		Net_WriteByte(DEM_SAVEGAME);
+		Net_WriteInt8(DEM_SAVEGAME);
 		Net_WriteString(savegamefile.GetChars());
 		Net_WriteString(savedescription.GetChars());
 		savegamefile = "";
 	}
-	cmd->ucmd = {};
-	gameInput.getInput(&cmd->ucmd);
-	cmd->consistency = consistency[myconnectindex][(maketic / ticdup) % BACKUPTICS];
+	*cmd = {};
+	gameInput.getInput(cmd);
 }
 
 //==========================================================================
@@ -176,7 +170,7 @@ void NewGame(MapRecord* map, int skill, bool ns = false)
 //
 //==========================================================================
 
-static void GameTicker()
+void G_Ticker()
 {
 	handleevents();
 
@@ -274,6 +268,8 @@ static void GameTicker()
 			break;
 
 		case ga_level:
+			Net_ResetCommands(true);
+			Net_SetWaiting();
 			Net_ClearFifo();
 			inputState.ClearAllInput();
 			gameInput.Clear();
@@ -308,50 +304,18 @@ static void GameTicker()
 		C_AdjustBottom();
 	}
 
-	// get commands, check consistancy, and build new consistancy check
-	int buf = (gametic / ticdup) % BACKUPTICS;
+	// get commands
+	const int curTic = gametic / TicDup;
 
-	for (int i = 0; i < MAXPLAYERS; i++)
+	for (auto client : NetworkClients)
 	{
-		if (playeringame[i])
-		{
-			ticcmd_t* cmd = &PlayerArray[i]->cmd;
-			ticcmd_t* newcmd = &netcmds[i][buf];
-			PlayerArray[i]->lastcmd = *cmd;
-			PlayerArray[i]->resetCameraAngles();
+		ticcmd_t* cmd = &PlayerArray[client]->cmd;
+		usercmd_t* nextCmd = &ClientStates[client].Tics[curTic % BACKUPTICS].Command;
+		PlayerArray[client]->lastcmd = *cmd;
+		PlayerArray[client]->resetCameraAngles();
 
-			if ((gametic % ticdup) == 0)
-			{
-				RunNetSpecs(i, buf);
-			}
-#if 0
-			if (demorecording)
-			{
-				G_WriteDemoTiccmd(newcmd, i, buf);
-			}
-			if (demoplayback)
-			{
-				G_ReadDemoTiccmd(cmd, i);
-			}
-			else
-#endif
-			{
-				*cmd = *newcmd;
-			}
-
-
-			if (netgame && /*!demoplayback &&*/ (gametic % ticdup) == 0)
-			{
-#if 0
-				//players[i].inconsistant = 0;
-				if (gametic > BACKUPTICS * ticdup && consistancy[i][buf] != cmd->consistancy)
-				{
-					players[i].inconsistant = gametic - BACKUPTICS * ticdup;
-				}
-#endif
-				consistency[i][buf] = gi->GetPlayerChecksum(i);
-			}
-		}
+		RunPlayerCommands(client, curTic);
+		cmd->ucmd = *nextCmd;
 	}
 
 	C_RunDelayedCommands();
@@ -382,7 +346,7 @@ static void GameTicker()
 		if (ScreenJobTick())
 		{
 			// synchronize termination with the playsim.
-			Net_WriteByte(DEM_ENDSCREENJOB);
+			Net_WriteInt8(DEM_ENDSCREENJOB);
 		}
 		break;
 
@@ -392,7 +356,7 @@ static void GameTicker()
 
 void DrawOverlays()
 {
-	NetUpdate();			// send out any new accumulation
+	NetUpdate(0);			// send out any new accumulation
 
 	if (gamestate != GS_INTRO) // do not draw overlays on the intros
 	{
@@ -507,220 +471,29 @@ void Display()
 
 //==========================================================================
 //
-// Forces playsim processing time to be consistent across frames.
-// This improves interpolation for frames in between tics.
-//
-// With this cvar off the mods with a high playsim processing time will appear
-// less smooth as the measured time used for interpolation will vary.
+// SignalHandler - the first signal ends the main loop, a second one exits right away.
 //
 //==========================================================================
 
-static void TicStabilityWait()
+static bool gameloop_abort = false;
+
+void SignalHandler(int signal)
 {
-	using namespace std::chrono;
-	using namespace std::this_thread;
-
-	if (!r_ticstability)
-		return;
-
-	uint64_t start = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
-	while (true)
+	if (gameloop_abort)
 	{
-		uint64_t cur = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
-		if (cur - start > stabilityticduration)
-			break;
-	}
-}
-
-static void TicStabilityBegin()
-{
-	using namespace std::chrono;
-	stabilitystarttime = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
-}
-
-static void TicStabilityEnd()
-{
-	using namespace std::chrono;
-	uint64_t stabilityendtime = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
-	stabilityticduration = min(stabilityendtime - stabilitystarttime, (uint64_t)1'000'000);
-}
-
-//==========================================================================
-//
-// The most important function in the engine.
-//
-//==========================================================================
-
-void TryRunTics (void)
-{
-	int 		i;
-	int 		lowtic;
-	int 		realtics;
-	int 		availabletics;
-	int 		counts;
-	int 		numplaying;
-
-	// If paused, do not eat more CPU time than we need, because it
-	// will all be wasted anyway.
-	bool doWait = (cl_capfps || pauseext || (r_NoInterpolate && !M_IsAnimated() && gamestate != GS_CUTSCENE && gamestate != GS_INTRO));
-
-	if (vid_dontdowait && ((vid_maxfps > 0) || (vid_vsync == true)))
-		doWait = false;
-
-	// get real tics
-	if (doWait)
-	{
-		entertic = I_WaitForTic (oldentertics);
+		Printf("Received signal %d, exiting\n", signal);
+		exit(0);
 	}
 	else
 	{
-		entertic = I_GetTime ();
-	}
-	realtics = entertic - oldentertics;
-	oldentertics = entertic;
-
-	// get available tics
-	NetUpdate ();
-
-	if (pauseext)
-		return;
-
-	lowtic = INT_MAX;
-	numplaying = 0;
-	for (i = 0; i < doomcom.numnodes; i++)
-	{
-		if (nodeingame[i])
-		{
-			numplaying++;
-			if (nettics[i] < lowtic)
-				lowtic = nettics[i];
-		}
-	}
-
-	availabletics = lowtic - gametic / ticdup;
-
-	// decide how many tics to run
-	if (realtics < availabletics-1)
-		counts = realtics+1;
-	else if (realtics < availabletics)
-		counts = realtics;
-	else
-		counts = availabletics;
-
-	// Uncapped framerate needs seprate checks
-	if (counts == 0 && !doWait)
-	{
-		TicStabilityWait();
-
-		// Check possible stall conditions
-		Net_CheckLastReceived(counts);
-		if (realtics >= 1)
-		{
-			C_Ticker();
-			M_Ticker();
-			// Repredict the player for new buffered movement
-#if 0
-			gi->Unpredict();
-			gi->Predict(myconnectindex);
-#endif
-		}
-		if (!gameInput.SyncInput())
-		{
-			gameInput.getInput();
-		}
-		return;
-	}
-
-	if (counts < 1)
-		counts = 1;
-
-	// wait for new tics if needed
-	while (lowtic < gametic + counts)
-	{
-		NetUpdate ();
-		lowtic = INT_MAX;
-
-		for (i = 0; i < doomcom.numnodes; i++)
-			if (nodeingame[i] && nettics[i] < lowtic)
-				lowtic = nettics[i];
-
-		lowtic = lowtic * ticdup;
-
-		if (lowtic < gametic)
-			I_Error ("TryRunTics: lowtic < gametic");
-
-		// Check possible stall conditions
-		Net_CheckLastReceived (counts);
-
-		// Update time returned by I_GetTime, but only if we are stuck in this loop
-		if (lowtic < gametic + counts)
-			I_SetFrameTime();
-
-		// don't stay in here forever -- give the menu a chance to work
-		if (I_GetTime () - entertic >= 1)
-		{
-			C_Ticker ();
-			M_Ticker ();
-			// Repredict the player for new buffered movement
-#if 0
-			gi->Unpredict();
-			gi->Predict(myconnectindex);
-#endif
-			return;
-		}
-	}
-
-	//Tic lowtic is high enough to process this gametic. Clear all possible waiting info
-	hadlate = false;
-#if 0
-	for (i = 0; i < MAXPLAYERS; i++)
-		players[i].waiting = false;
-#endif
-	lastglobalrecvtime = I_GetTime (); //Update the last time the game tic'd over
-
-	// run the count tics
-	if (counts > 0)
-	{
-#if 0
-		gi->Unpredict();
-#endif
-		while (counts--)
-		{
-			TicStabilityBegin();
-			if (gametic > lowtic)
-			{
-				I_Error ("gametic>lowtic");
-			}
-#if 0
-			if (advancedemo)
-			{
-				D_DoAdvanceDemo ();
-			}
-#endif
-			C_Ticker ();
-			M_Ticker ();
-			GameTicker();
-			gametic++;
-
-			NetUpdate ();	// check for new console commands
-			TicStabilityEnd();
-		}
-#if 0
-		gi->Predict(myconnectindex);
-#endif
-		gi->UpdateSounds();
-		soundEngine->UpdateSounds(I_GetTime());
-	}
-	else
-	{
-		TicStabilityWait();
+		Printf("Received signal %d, shutting down\n", signal);
+		gameloop_abort = true;
 	}
 }
 
-
 //==========================================================================
 //
-// MainLoop - will never return aside from exceptions being thrown.
+// MainLoop - only returns after a shutdown signal, aside from exceptions being thrown.
 //
 //==========================================================================
 
@@ -745,7 +518,7 @@ void MainLoop ()
 		}
 	}
 
-	for (;;)
+	while (!gameloop_abort)
 	{
 		try
 		{

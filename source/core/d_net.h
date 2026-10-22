@@ -3,35 +3,101 @@
 #define __D_NET__
 
 #include "i_net.h"
+#include "d_protocol.h"
 #include "d_ticcmd.h"
 
-enum
-{
-	MAXPLAYERS = 8
-};
+uint64_t I_msTime();
 
 extern int myconnectindex, numplayers;
 extern int connecthead, connectpoint2[MAXPLAYERS];
 
+enum EClientFlags
+{
+	CF_NONE = 0,
+	CF_QUIT = 1,		// If in packet server mode, this client sent an exit command and needs to be disconnected.
+	CF_MISSING_SEQ = 1 << 1,	// If a sequence was missed/out of order, ask this client to send back over their info.
+	CF_RETRANSMIT_SEQ = 1 << 2,	// If set, this client needs command data resent to them.
+	CF_MISSING_CON = 1 << 3,	// If a consistency was missed/out of order, ask this client to send back over their info.
+	CF_RETRANSMIT_CON = 1 << 4,	// If set, this client needs consistency data resent to them.
+	CF_UPDATED = 1 << 5,	// Got an updated packet from this client.
+
+	CF_RETRANSMIT = CF_RETRANSMIT_CON | CF_RETRANSMIT_SEQ,
+	CF_MISSING = CF_MISSING_CON | CF_MISSING_SEQ,
+};
+
 class FDynamicBuffer
 {
 public:
-	FDynamicBuffer ();
-	~FDynamicBuffer ();
+	FDynamicBuffer();
+	~FDynamicBuffer();
 
-	void SetData (const uint8_t *data, int len);
-	uint8_t *GetData (int *len = NULL);
+	void SetData(const uint8_t* data, int len);
+	uint8_t* GetData(int* len = nullptr);
 	TArrayView<uint8_t> GetTArrayView();
 
 private:
-	uint8_t *m_Data;
+	uint8_t* m_Data;
 	int m_Len, m_BufferLen;
 };
 
-extern FDynamicBuffer NetSpecs[MAXPLAYERS][BACKUPTICS];
+// New packet structure:
+//
+//  One byte for the net command flags.
+//  Four bytes for the last sequence we got from that client.
+//  Four bytes for the last consistency we got from that client.
+//  If NCMD_QUITTERS set, one byte for the number of players followed by one byte for each player's consolenum. Packet server mode only.
+//  One byte for the number of players.
+//  One byte for the number of tics.
+//   If > 0, four bytes for the base sequence being worked from.
+//  One byte for the number of world tics ran.
+//   If > 0, four bytes for the base consistency being worked from.
+//  If in packet server mode and from the host, one byte for how far ahead of the host we are.
+//  For each player:
+//   One byte for the player number.
+//	 If in packet server mode and from the host, two bytes for the latency to the host.
+//   For each consistency:
+//    One byte for the delta from the base consistency.
+//    Two bytes for each consistency.
+//   For each tic:
+//    One byte for the delta from the base sequence.
+//    The remaining command and event data for that player.
+struct FClientNetState
+{
+	// Networked client data.
+	struct FNetTic {
+		FDynamicBuffer	Data;
+		usercmd_t		Command;
+	} Tics[BACKUPTICS] = {};
+
+	// Local information about client.
+	uint8_t		CurrentLatency = 0u;		// Current latency id the client is on. If the one the client sends back is > this, update RecvTime and mark a new SentTime.
+	bool		bNewLatency = true;			// If the sequence was bumped, the next latency packet sent out should record the send time.
+	uint16_t	AverageLatency = 0u;		// Calculate the average latency every second or so, that way it doesn't give huge variance in the scoreboard.
+	uint64_t	SentTime[MAXSENDTICS] = {};	// Timestamp for when we sent out the packet to this client.
+	uint64_t	RecvTime[MAXSENDTICS] = {};	// Timestamp for when the client acknowledged our last packet. If in packet server mode, this is the server's delta.
+
+	int				Flags = 0;				// State of this client.
+
+	uint8_t			StabilityBuffer = 0u;	// If in packet-server mode, account for if the client is trying to stabilize when measuring their performance.
+	uint8_t			ResendID = 0u;			// Make sure that if the retransmit happened on a wait barrier, it can be properly resent back over.
+	int				ResendSequenceFrom = -1; // If >= 0, send from this sequence up to the most recent one, capped to MAXSENDTICS.
+	int				SequenceAck = -1;		// The last sequence the client reported from us.
+	int 			CurrentSequence = -1;	// The last sequence we've gotten from this client.
+
+	// Every packet includes consistencies for tics that client ran. When
+	// a world tic is ran, the local client will store all the consistencies
+	// of the clients in their LocalConsistency. Then the consistencies will
+	// be checked against retroactively as they come in.
+	int ResendConsistencyFrom = -1;				// If >= 0, send from this consistency up to the most recent one, capped to MAXSENDTICS.
+	int ConsistencyAck = -1;					// Last consistency the client reported from us.
+	int LastVerifiedConsistency = -1;			// Last consistency we checked from this client. If < CurrentNetConsistency, run through them.
+	int CurrentNetConsistency = -1;				// Last consistency we got from this client.
+	int16_t NetConsistency[BACKUPTICS] = {};	// Consistencies we got from this client.
+	int16_t LocalConsistency[BACKUPTICS] = {};	// Local consistency of the client to check against.
+};
 
 // Create any new ticcmds and broadcast to other players.
-void NetUpdate (void);
+void NetUpdate(int tics);
 
 // Broadcasts special packets to other players
 //	to notify of game exit
@@ -40,48 +106,38 @@ void D_QuitNetGame (void);
 //? how many ticks to run?
 void TryRunTics (void);
 
-//Use for checking to see if the netgame has stalled
-void Net_CheckLastReceived(int);
-
 // [RH] Functions for making and using special "ticcmds"
-void Net_NewMakeTic ();
-void Net_WriteByte (uint8_t);
-void Net_WriteWord (short);
-void Net_WriteLong (int);
-void Net_WriteFloat (float);
-void Net_WriteString (const char *);
-void Net_WriteBytes (const uint8_t *, int len);
+void Net_NewClientTic();
+void Net_Initialize();
+void Net_WriteInt8(uint8_t);
+void Net_WriteInt16(int16_t);
+void Net_WriteInt32(int32_t);
+void Net_WriteInt64(int64_t);
+void Net_WriteFloat(float);
+void Net_WriteDouble(double);
+void Net_WriteString(const char *);
+void Net_WriteBytes(const uint8_t *, int len);
 
-void Net_DoCommand (int type, TArrayView<uint8_t>& stream, int player);
-void Net_SkipCommand (int type, TArrayView<uint8_t>& stream);
+void Net_DoCommand(int cmd, TArrayView<uint8_t>& stream, int player);
+void Net_SkipCommand(int cmd, TArrayView<uint8_t>& stream);
 
-void Net_ClearBuffers ();
+bool D_CheckNetGame();
 
-bool D_CheckNetGame(void);
+bool Net_CheckCutsceneReady();
+void Net_AdvanceCutscene();
+void Net_ResetCommands(bool midTic);
+void Net_SetWaiting();
+void Net_ClearBuffers();
+bool Net_IsWaiting();
 
-void Net_ClearFifo(void);
-
+// Reset the network ticker after finishing a lengthy operation, so the time it took is not caught up on.
+void Net_ClearFifo();
 
 // Netgame stuff (buffers and pointers, i.e. indices).
 
-// This is the interface to the packet driver, a separate program
-// in DOS, but just an abstraction here.
-extern	doomcom_t		doomcom;
-
-extern	struct ticcmd_t	localcmds[LOCALCMDTICS];
-
-extern	int 			maketic;
-extern	int 			nettics[MAXNETNODES];
-extern	int				netdelay[MAXNETNODES][BACKUPTICS];
-extern	int 			nodeforplayer[MAXPLAYERS];
-
-extern	ticcmd_t		netcmds[MAXPLAYERS][BACKUPTICS];
-extern	int 			ticdup;
-extern bool 			nodeingame[MAXNETNODES];				// set false as nodes leave game
-extern bool			hadlate;
-extern uint64_t		lastglobalrecvtime;						// Identify the last time a packet was received.
-extern bool playeringame[MAXPLAYERS]; // as long as network isn't working - true for the first player, false for all others.
-extern short consistency[MAXPLAYERS][BACKUPTICS];
-
+extern usercmd_t			LocalCmds[LOCALCMDTICS];
+extern int					ClientTic;
+extern FClientNetState		ClientStates[MAXPLAYERS];
+extern bool					playeringame[MAXPLAYERS];
 
 #endif

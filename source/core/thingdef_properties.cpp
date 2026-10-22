@@ -250,6 +250,21 @@ void HandleDeprecatedFlags(DCoreActor *defaults, PClassActor *info, bool set, in
 {
 }
 
+// the interface here works on object, but currently all deprecated flags affect subclasses of CoreActor only
+static void HandleDeprecatedFlagsNative(DCoreActor *self, int set, int index)
+{
+	HandleDeprecatedFlags(self, static_cast<PClassActor*>(self->GetClass()), set, index);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DObject, HandleDeprecatedFlags, HandleDeprecatedFlagsNative)
+{
+	PARAM_SELF_PROLOGUE(DCoreActor);
+	PARAM_INT(set);
+	PARAM_INT(index);
+	HandleDeprecatedFlagsNative(self, set, index);
+	return 0;
+}
+
 //===========================================================================
 //
 // CheckDeprecatedFlags
@@ -263,6 +278,18 @@ void HandleDeprecatedFlags(DCoreActor *defaults, PClassActor *info, bool set, in
 bool CheckDeprecatedFlags(DCoreActor *actor, PClassActor *info, int index)
 {
 	return false; // Any entirely unknown flag is not set
+}
+
+static int CheckDeprecatedFlagsNative(DCoreActor *self, int index)
+{
+	return CheckDeprecatedFlags(self, static_cast<PClassActor*>(self->GetClass()), index);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DObject, CheckDeprecatedFlags, CheckDeprecatedFlagsNative)
+{
+	PARAM_SELF_PROLOGUE(DCoreActor);
+	PARAM_INT(index);
+	ACTION_RETURN_INT(CheckDeprecatedFlagsNative(self, index));
 }
 
 //==========================================================================

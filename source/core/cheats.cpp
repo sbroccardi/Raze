@@ -120,8 +120,8 @@ CCMD(fly)
 {
 	if (!CheckCheatmode(true, true))
 	{
-		Net_WriteByte(DEM_GENERICCHEAT);
-		Net_WriteByte(CHT_FLY);
+		Net_WriteInt8(DEM_GENERICCHEAT);
+		Net_WriteInt8(CHT_FLY);
 	}
 }
 
@@ -135,8 +135,8 @@ CCMD(god)
 {
 	if (!CheckCheatmode(true, true))	// Right now the god cheat is a global setting in some games and not a player property. This should be changed.
 	{
-		Net_WriteByte(DEM_GENERICCHEAT);
-		Net_WriteByte(CHT_GOD);
+		Net_WriteInt8(DEM_GENERICCHEAT);
+		Net_WriteInt8(CHT_GOD);
 	}
 }
 
@@ -144,8 +144,8 @@ CCMD(godon)
 {
 	if (!CheckCheatmode(true, true))
 	{
-		Net_WriteByte(DEM_GENERICCHEAT);
-		Net_WriteByte(CHT_GODON);
+		Net_WriteInt8(DEM_GENERICCHEAT);
+		Net_WriteInt8(CHT_GODON);
 	}
 }
 
@@ -153,8 +153,8 @@ CCMD(godoff)
 {
 	if (!CheckCheatmode(true, true))
 	{
-		Net_WriteByte(DEM_GENERICCHEAT);
-		Net_WriteByte(CHT_GODOFF);
+		Net_WriteInt8(DEM_GENERICCHEAT);
+		Net_WriteInt8(CHT_GODOFF);
 	}
 }
 
@@ -162,8 +162,8 @@ CCMD(noclip)
 {
 	if (!CheckCheatmode(true, true))
 	{
-		Net_WriteByte(DEM_GENERICCHEAT);
-		Net_WriteByte(CHT_NOCLIP);
+		Net_WriteInt8(DEM_GENERICCHEAT);
+		Net_WriteInt8(CHT_NOCLIP);
 	}
 }
 
@@ -188,8 +188,8 @@ CCMD(give)
 		{
 			if (!CheckCheatmode(true, true))
 			{
-				Net_WriteByte(DEM_GIVE);
-				Net_WriteByte((uint8_t)i);
+				Net_WriteInt8(DEM_GIVE);
+				Net_WriteInt8((uint8_t)i);
 			}
 			return;
 		}
@@ -252,9 +252,9 @@ void endScreenJob(int player, TArrayView<uint8_t>& stream, bool skip)
 
 void ChangeLevel(MapRecord* map, int skill, bool bossexit)
 {
-	Net_WriteByte(DEM_CHANGEMAP);
-	Net_WriteByte(skill);
-	Net_WriteByte(bossexit);
+	Net_WriteInt8(DEM_CHANGEMAP);
+	Net_WriteInt8(skill);
+	Net_WriteInt8(bossexit);
 	Net_WriteString(map? map->labelName.GetChars() : "");
 }
 

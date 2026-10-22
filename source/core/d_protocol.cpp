@@ -41,20 +41,21 @@
 
 extern int gametic;
 
-void UnpackUserCmd (InputPacket *ucmd, const InputPacket *basis, TArrayView<uint8_t>& stream)
+void UnpackUserCmd (usercmd_t& cmd, const usercmd_t *basis, TArrayView<uint8_t>& stream)
 {
 	uint8_t flags;
+	usercmd_t* ucmd = &cmd;
 
 	if (basis != NULL)
 	{
 		if (basis != ucmd)
 		{
-			memcpy (ucmd, basis, sizeof(InputPacket));
+			memcpy (ucmd, basis, sizeof(usercmd_t));
 		}
 	}
 	else
 	{
-		memset (ucmd, 0, sizeof(InputPacket));
+		memset (ucmd, 0, sizeof(usercmd_t));
 	}
 
 	flags = ReadInt8 (stream);
@@ -79,8 +80,9 @@ void UnpackUserCmd (InputPacket *ucmd, const InputPacket *basis, TArrayView<uint
 	}
 }
 
-void PackUserCmd (const InputPacket *ucmd, const InputPacket *basis, TArrayView<uint8_t>& stream)
+void PackUserCmd (const usercmd_t& cmd, const usercmd_t *basis, TArrayView<uint8_t>& stream)
 {
+	const usercmd_t* ucmd = &cmd;
 	uint8_t flags = 0;
 	auto packingBitsView = TArrayView(stream.Data(), 1);
 	InputPacket blank;
@@ -156,18 +158,18 @@ FSerializer &Serialize(FSerializer &arc, const char *key, InputPacket &cmd, Inpu
 	return arc;
 }
 
-void WriteUserCmdMessage (InputPacket *ucmd, const InputPacket *basis, TArrayView<uint8_t>& stream)
+void WriteUserCmdMessage (const usercmd_t& ucmd, const usercmd_t *basis, TArrayView<uint8_t>& stream)
 {
 	if (basis == NULL)
 	{
-		if (ucmd->actions != 0 || !ucmd->vel.isZero() || !ucmd->ang.isZero())
+		if (ucmd.actions != 0 || !ucmd.vel.isZero() || !ucmd.ang.isZero())
 		{
 			WriteInt8 (DEM_USERCMD, stream);
 			PackUserCmd (ucmd, basis, stream);
 			return;
 		}
 	}
-	else if (ucmd->actions != basis->actions || ucmd->vel != basis->vel || ucmd->ang != basis->ang)
+	else if (ucmd.actions != basis->actions || ucmd.vel != basis->vel || ucmd.ang != basis->ang)
 	{
 		WriteInt8 (DEM_USERCMD, stream);
 		PackUserCmd (ucmd, basis, stream);
@@ -178,109 +180,84 @@ void WriteUserCmdMessage (InputPacket *ucmd, const InputPacket *basis, TArrayVie
 }
 
 
-void SkipTicCmd (TArrayView<uint8_t>& stream, int count)
+// Reads through the user command without actually setting any of its info. Used to get the size
+// of the command when getting the length of the stream.
+void SkipUserCmdMessage(TArrayView<uint8_t>& stream)
 {
-	for (int i = count; i > 0; i--)
+	while (true)
 	{
-		bool moreticdata = true;
-
-		AdvanceStream(stream, 2);		// Skip consistancy marker
-		while (moreticdata)
+		const uint8_t type = ReadInt8(stream);
+		if (type == DEM_USERCMD)
 		{
-			uint8_t type = ReadInt8(stream);
-
-			if (type == DEM_USERCMD)
-			{
-				moreticdata = false;
-				int flags = ReadInt8(stream);
-				size_t skip = 0;
-				if (flags & UCMDF_PITCH)		skip += 4;
-				if (flags & UCMDF_YAW)			skip += 4;
-				if (flags & UCMDF_FORWARDMOVE)	skip += 4;
-				if (flags & UCMDF_SIDEMOVE)		skip += 4;
-				if (flags & UCMDF_UPMOVE)		skip += 4;
-				if (flags & UCMDF_ROLL)			skip += 4;
-				if (flags & UCMDF_BUTTONS)		skip += 4;
-				AdvanceStream(stream, skip);
-			}
-			else if (type == DEM_EMPTYUSERCMD)
-			{
-				moreticdata = false;
-			}
-			else
-			{
-				Net_SkipCommand (type, stream);
-			}
+			const int flags = ReadInt8(stream);
+			size_t skip = 0;
+			if (flags & UCMDF_PITCH)		skip += 4;
+			if (flags & UCMDF_YAW)			skip += 4;
+			if (flags & UCMDF_FORWARDMOVE)	skip += 4;
+			if (flags & UCMDF_SIDEMOVE)		skip += 4;
+			if (flags & UCMDF_UPMOVE)		skip += 4;
+			if (flags & UCMDF_ROLL)			skip += 4;
+			if (flags & UCMDF_BUTTONS)		skip += 4;
+			AdvanceStream(stream, skip);
+			break;
 		}
-	}
-}
-
-extern short consistency[MAXPLAYERS][BACKUPTICS];
-void ReadTicCmd (TArrayView<uint8_t>& stream, int player, int tic)
-{
-	int type;
-	uint8_t *start;
-	ticcmd_t *tcmd;
-
-	int ticmod = tic % BACKUPTICS;
-
-	tcmd = &netcmds[player][ticmod];
-	tcmd->consistency = ReadInt16 (stream);
-
-	start = stream.Data();
-
-	while ((type = ReadInt8 (stream)) != DEM_USERCMD && type != DEM_EMPTYUSERCMD)
-		Net_SkipCommand (type, stream);
-
-	NetSpecs[player][ticmod].SetData (start, int(stream.Data() - start - 1));
-
-	if (type == DEM_USERCMD)
-	{
-		UnpackUserCmd (&tcmd->ucmd,
-			tic ? &netcmds[player][(tic-1)%BACKUPTICS].ucmd : NULL, stream);
-	}
-	else
-	{
-		if (tic)
+		else if (type == DEM_EMPTYUSERCMD)
 		{
-			memcpy (&tcmd->ucmd, &netcmds[player][(tic-1)%BACKUPTICS].ucmd, sizeof(tcmd->ucmd));
+			break;
 		}
 		else
 		{
-			memset (&tcmd->ucmd, 0, sizeof(tcmd->ucmd));
+			Net_SkipCommand(type, stream);
 		}
 	}
-#if 0
-	if (player==consoleplayer&&tic>BACKUPTICS)
-		assert(consistancy[player][ticmod] == tcmd->consistancy);
-#endif
 }
 
-void RunNetSpecs (int player, int buf)
+void ReadUserCmdMessage(TArrayView<uint8_t>& stream, int player, int tic)
 {
-	if (gametic % ticdup == 0)
+	const int ticMod = tic % BACKUPTICS;
+
+	auto& curTic = ClientStates[player].Tics[ticMod];
+	usercmd_t& ticCmd = curTic.Command;
+
+	const uint8_t* start = stream.Data();
+
+	// Skip until we reach the player command. Event data will get read off once the
+	// tick is actually executed.
+	int type;
+	while ((type = ReadInt8(stream)) != DEM_USERCMD && type != DEM_EMPTYUSERCMD)
+		Net_SkipCommand(type, stream);
+
+	// Subtract a byte to account for the fact the stream head is now sitting on the
+	// user command.
+	curTic.Data.SetData(nullptr, 0u);
+	curTic.Data.SetData(start, int(stream.Data() - start - 1));
+
+	if (type == DEM_USERCMD)
 	{
-		auto stream = NetSpecs[player][buf].GetTArrayView ();
-		if (stream.Size())
-		{
-			while (stream.Size())
-			{
-				int type = ReadInt8 (stream);
-				try
-				{
-					Net_DoCommand(type, stream, player);
-				}
-				catch (...)
-				{
-					NetSpecs[player][buf].SetData(NULL, 0);
-					throw;
-				}
-			}
-#if 0
-			if (!demorecording)
-#endif
-				NetSpecs[player][buf].SetData (NULL, 0);
-		}
+		UnpackUserCmd(ticCmd,
+			tic > 0 ? &ClientStates[player].Tics[(tic - 1) % BACKUPTICS].Command : nullptr, stream);
+	}
+	else
+	{
+		if (tic > 0)
+			memcpy(&ticCmd, &ClientStates[player].Tics[(tic - 1) % BACKUPTICS].Command, sizeof(ticCmd));
+		else
+			memset(&ticCmd, 0, sizeof(ticCmd));
+	}
+}
+
+void RunPlayerCommands(int player, int tic)
+{
+	// We don't have the full command yet, so don't run it.
+	if (gametic % TicDup)
+		return;
+
+	auto& data = ClientStates[player].Tics[tic % BACKUPTICS].Data;
+	auto stream = data.GetTArrayView();
+	if (stream.Size())
+	{
+		while (stream.Size() > 0)
+			Net_DoCommand(ReadInt8(stream), stream, player);
 	}
 }
 

@@ -271,3 +271,55 @@ class RazeMenuDelegate : MenuDelegateBase
 
 }
 
+
+// Controller rumble, used by the common menu code. GZDoom declares it with its actor code.
+class Haptics
+{
+	native static void RumbleDirect(int tic_count, float high_frequency, float low_frequency, float left_trigger, float right_trigger);
+	native static void Rumble(Name identifier);
+}
+
+// Used by the common dynamic array types. GZDoom declares it with its model animation code.
+struct TRS
+{
+	FVector3 translation;
+	FQuat rotation;
+	FVector3 scaling;
+}
+
+// Used by the common menu code. Raze has no per-player CVars, so the player is ignored.
+extend struct CVar
+{
+	static CVar GetCVar(Name name, int player = -1)
+	{
+		return FindCVar(name);
+	}
+}
+
+// Intermission lobby support, used by the common screen job runner in net games.
+extend class ScreenJobRunner
+{
+	protected native static void ReadyPlayer();
+	protected native static void ResetReadyTimer();
+
+	native static int GetReadyTimer();
+	native static bool IsPlayerReady(int pNum);
+
+	bool ConsumedInput(InputEvent evt)
+	{
+		if (netgame && evt.type == InputEvent.Type_KeyDown
+			&& (evt.KeyScan == InputEvent.Key_Space || evt.KeyScan == InputEvent.Key_Mouse1
+				|| evt.KeyScan == InputEvent.Key_Pad_A || evt.KeyScan == InputEvent.Key_Joy1))
+		{
+			ReadyPlayer();
+			return true;
+		}
+
+		return false;
+	}
+
+	// The Build games do not support net games yet, so there is no ready-up display.
+	void DrawReadiedPlayers(double smoothratio)
+	{
+	}
+}

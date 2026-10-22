@@ -1196,6 +1196,7 @@ int RunGame()
 	setViewport(hud_size);
 
 	D_CheckNetGame();
+	Net_Initialize();
 	UpdateGenericUI(ui_generic);
 	PClassActor::StaticInit();
 	gi->FinalizeSetup();
@@ -1384,9 +1385,9 @@ CCMD(taunt)
 		int mode = atoi(argv[2]);
 
 		// In a ZDoom-style protocol this should be sent:
-		// Net_WriteByte(DEM_TAUNT);
-		// Net_WriteByte(taunt);
-		// Net_WriteByte(mode);
+		// Net_WriteInt8(DEM_TAUNT);
+		// Net_WriteInt8(taunt);
+		// Net_WriteInt8(mode);
 		if (mode == 1)
 		{
 			// todo:

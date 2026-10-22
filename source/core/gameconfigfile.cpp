@@ -44,6 +44,7 @@
 #include "printf.h"
 #include "gamecontrol.h"
 #include "version.h"
+#include "vm.h"
 
 #define LASTRUNVERSION "4"
 
@@ -644,6 +645,20 @@ void G_ReadConfig(const char* game)
 
 	FBaseCVar::EnableCallbacks();
 	GameName = game;
+}
+
+static int SaveConfig()
+{
+	if (!GameConfig) return false;
+	GameConfig->ArchiveGlobalData();
+	GameConfig->ArchiveGameData(GameName.GetChars());
+	return GameConfig->WriteConfigFile();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_CVar, SaveConfig, SaveConfig)
+{
+	PARAM_PROLOGUE;
+	ACTION_RETURN_INT(SaveConfig());
 }
 
 void G_SaveConfig()

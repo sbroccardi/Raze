@@ -14,7 +14,7 @@ enum EHitBits
 	kHitVoid = 0x10000,      // SW only
 };
 
-const MAXPLAYERS = 8;
+const MAXPLAYERS = 64;
 const MAXSTATUS = 1024;
 const zmaptoworld = (1. / 256.);
 const maptoworld = (1. / 16.);

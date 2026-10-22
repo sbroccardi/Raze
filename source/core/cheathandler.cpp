@@ -141,8 +141,8 @@ int Cheat_Responder (event_t *ev)
 
 bool SendGenericCheat(cheatseq_t* cheat)
 {
-	Net_WriteByte(DEM_GENERICCHEAT);
-	Net_WriteByte(cheat->Param);
+	Net_WriteInt8(DEM_GENERICCHEAT);
+	Net_WriteInt8(cheat->Param);
 	return true;
 }
 

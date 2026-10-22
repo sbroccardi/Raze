@@ -54,6 +54,9 @@
 #define	ANGLE2SHORT(x)	((((x)/360) & 65535)
 #define	SHORT2ANGLE(x)	((x)*360)
 
+// The network code works with player commands under this name.
+using usercmd_t = InputPacket;
+
 
 struct zdemoheader_s {
 	uint8_t	demovermajor;
@@ -91,6 +94,10 @@ enum EDemoCommand
 	DEM_CHANGEMAP,
 	DEM_ENDSCREENJOB,
 	DEM_SAVEGAME,
+	DEM_KICK,			// Byte: Player number
+	DEM_READIED,
+	DEM_ADDCONTROLLER,	// Byte: Player to add to the controller list.
+	DEM_DELCONTROLLER,	// Byte: Player to remove from the controller list.
 
 	DEM_MAX
 };
@@ -175,14 +182,12 @@ void StartChunk (int id, TArrayView<uint8_t>& stream);
 void FinishChunk (TArrayView<uint8_t>& stream);
 void SkipChunk (TArrayView<uint8_t>& stream);
 
-void UnpackUserCmd (InputPacket *ucmd, const InputPacket*basis, TArrayView<uint8_t>& stream);
-void PackUserCmd (const InputPacket*ucmd, const InputPacket*basis, TArrayView<uint8_t>& stream);
-void WriteUserCmdMessage (InputPacket*ucmd, const InputPacket*basis, TArrayView<uint8_t>& stream);
+void UnpackUserCmd(usercmd_t& ucmd, const usercmd_t* basis, TArrayView<uint8_t>& stream);
+void PackUserCmd(const usercmd_t& ucmd, const usercmd_t* basis, TArrayView<uint8_t>& stream);
+void WriteUserCmdMessage(const usercmd_t& ucmd, const usercmd_t *basis, TArrayView<uint8_t>& stream);
 
-struct ticcmd_t;
-
-void SkipTicCmd (TArrayView<uint8_t>& stream, int count);
-void ReadTicCmd (TArrayView<uint8_t>& stream, int player, int tic);
-void RunNetSpecs (int player, int buf);
+void SkipUserCmdMessage(TArrayView<uint8_t>& stream);
+void ReadUserCmdMessage(TArrayView<uint8_t>& stream, int player, int tic);
+void RunPlayerCommands(int player, int tic);
 
 #endif //__D_PROTOCOL_H__

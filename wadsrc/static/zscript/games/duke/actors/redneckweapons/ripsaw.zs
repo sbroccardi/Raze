@@ -71,8 +71,6 @@ class RedneckSawBlade : DukeProjectile
 		int scount;
 
 		if (actor.extra >= 0) actor.shade = -96;
-		bALTPROJECTILESPRITE = actor.bALTPROJECTILESPRITE;	// must copy because shooter may disappear.
-
 
 		scount = 1;
 		vel = 40.25;
@@ -112,6 +110,7 @@ class RedneckSawBlade : DukeProjectile
 		let spawned = dlevel.SpawnActor(sect, pos.plusZ(-1) + offset, self.GetClass(), 0, (0.21875, 0.21875), ang, vel, zvel, actor, STAT_PROJECTILE);
 
 		if (!spawned) return true;
+		spawned.bALTPROJECTILESPRITE = actor.bALTPROJECTILESPRITE;	// must copy because shooter may disappear.
 
 		if (p != null)
 		{
