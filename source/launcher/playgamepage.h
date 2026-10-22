@@ -6,16 +6,16 @@ class LauncherWindow;
 class TextLabel;
 class ListView;
 class LineEdit;
+class CheckboxLabel;
 struct WadStuff;
+struct FStartupSelectionInfo;
 
 class PlayGamePage : public Widget
 {
 public:
-	PlayGamePage(LauncherWindow* launcher, WadStuff* wads, int numwads, int defaultiwad);
+	PlayGamePage(LauncherWindow* launcher, const FStartupSelectionInfo& info);
 	void UpdateLanguage();
-
-	std::string GetExtraArgs();
-	int GetSelectedGame();
+	void SetValues(FStartupSelectionInfo& info) const;
 
 private:
 	void OnGeometryChanged() override;
@@ -25,8 +25,10 @@ private:
 	LauncherWindow* Launcher = nullptr;
 
 	TextLabel* WelcomeLabel = nullptr;
+	TextLabel* VersionLabel = nullptr;
 	TextLabel* SelectLabel = nullptr;
 	TextLabel* ParametersLabel = nullptr;
 	ListView* GamesList = nullptr;
 	LineEdit* ParametersEdit = nullptr;
+	CheckboxLabel* SaveArgsCheckbox = nullptr;
 };
