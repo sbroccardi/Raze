@@ -112,7 +112,7 @@ const int Tex_Blend_Hardlight = 4;
 
  vec4 ApplyTextureManipulation(vec4 texel)
  {
-	// Step 1: desaturate according to the material's desaturation factor. 
+	// Step 1: desaturate according to the material's desaturation factor.
 	texel = dodesaturate(texel, uTextureModulateColor.a);
 
 	// Step 2: Invert if requested // TODO FIX
@@ -214,7 +214,7 @@ vec4 getTexel(vec2 st)
 #endif
 
 	// Apply the texture modification colors.
-#if (DEF_BLEND_FLAGS != 0)	
+#if (DEF_BLEND_FLAGS != 0)
 
 	// only apply the texture manipulation if it contains something.
 	texel = ApplyTextureManipulation(texel);
@@ -312,7 +312,7 @@ float R_DoomLightingEquation(float light)
 
 	float colormap = R_ZDoomColormap(light, z); // ONLY Software mode, vanilla not yet working
 
-#if (DEF_BANDED_SW_LIGHTING == 1) 
+#if (DEF_BANDED_SW_LIGHTING == 1)
 	colormap = floor(colormap) + 0.5;
 #endif
 
@@ -394,7 +394,7 @@ void SetMaterialProps(inout Material material, vec2 texCoord)
 //
 // This is making this a bit more complicated than it needs to
 // because we can't just desaturate the final fragment color.
-// 
+//
 //===========================================================================
 
 vec4 getLightColor(Material material, float fogdist, float fogfactor)
@@ -424,13 +424,13 @@ vec4 getLightColor(Material material, float fogdist, float fogfactor)
 		}
 		#endif
 	}
-#endif	
+#endif
 
 
 	//
 	// handle glowing walls
 	//
-#if (DEF_USE_GLOW_TOP_COLOR)	
+#if (DEF_USE_GLOW_TOP_COLOR)
 	if (glowdist.x < uGlowTopColor.a)
 	{
 		color.rgb += desaturate(uGlowTopColor * (1.0 - glowdist.x / uGlowTopColor.a)).rgb;
@@ -438,7 +438,7 @@ vec4 getLightColor(Material material, float fogdist, float fogfactor)
 #endif
 
 
-#if (DEF_USE_GLOW_BOTTOM_COLOR)	
+#if (DEF_USE_GLOW_BOTTOM_COLOR)
 	if (glowdist.y < uGlowBottomColor.a)
 	{
 		color.rgb += desaturate(uGlowBottomColor * (1.0 - glowdist.y / uGlowBottomColor.a)).rgb;
@@ -450,12 +450,12 @@ vec4 getLightColor(Material material, float fogdist, float fogfactor)
 	// these cannot be safely applied by the legacy format where the implementation cannot guarantee that the values are set.
 #ifndef LEGACY_USER_SHADER
 	//
-	// apply glow 
+	// apply glow
 	//
 	color.rgb = mix(color.rgb, material.Glow.rgb, material.Glow.a);
 
 	//
-	// apply brightmaps 
+	// apply brightmaps
 	//
 	color.rgb = min(color.rgb + material.Bright.rgb, 1.0);
 #endif
@@ -563,7 +563,7 @@ void main()
 			frag = vec4(uFogColor.rgb, (1.0 - fogfactor) * frag.a * 0.75 * vColor.a);
 		}
 		#endif
-	}	
+	}
 	#else
 	{
 		#if (DEF_TEXTURE_MODE == 7)
@@ -571,7 +571,7 @@ void main()
 			float gray = grayscale(frag);
 			vec4 cm = (uObjectColor + gray * (uAddColor - uObjectColor)) * 2;
 			frag = vec4(clamp(cm.rgb, 0.0, 1.0), frag.a);
-		}		
+		}
 		#endif
 
 		frag = frag * ProcessLight(material, vColor);
@@ -584,10 +584,10 @@ void main()
 		frag.rgb = clamp(pow(frag.rgb, vec3(uFixedColormapStart.a)), 0.0, 1.0);
 		if (uFixedColormapRange.a == 0.0)
 		{
-			float gray = (frag.r * 0.3 + frag.g * 0.56 + frag.b * 0.14);	
+			float gray = (frag.r * 0.3 + frag.g * 0.56 + frag.b * 0.14);
 			vec4 cm = uFixedColormapStart + gray * uFixedColormapRange;
 			frag.rgb = clamp(cm.rgb, 0.0, 1.0);
-		} 
+		}
 	}
 #endif
 

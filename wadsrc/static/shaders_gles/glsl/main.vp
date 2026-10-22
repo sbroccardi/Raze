@@ -58,12 +58,12 @@ void main()
 
 	vec2 parmTexCoord;
 	vec4 parmPosition;
-	
+
 	BonesResult bones = ApplyBones();
 
 	parmTexCoord = aTexCoord;
 	parmPosition = bones.Position;
-	
+
 	#ifndef SIMPLE
 		vec4 worldcoord = ModelMatrix * mix(parmPosition, aVertex2, uInterpolationFactor);
 	#else
@@ -108,7 +108,7 @@ void main()
 			ClipDistance3 = ((uSplitTopPlane.w + uSplitTopPlane.x * worldcoord.x + uSplitTopPlane.y * worldcoord.z) * uSplitTopPlane.z) - worldcoord.y;
 			ClipDistance4 = worldcoord.y - ((uSplitBottomPlane.w + uSplitBottomPlane.x * worldcoord.x + uSplitBottomPlane.y * worldcoord.z) * uSplitBottomPlane.z);
 		}
-		
+
 		vWorldNormal = NormalModelMatrix * vec4(normalize(bones.Normal), 1.0);
 
 		vEyeNormal = NormalViewMatrix * vWorldNormal;
@@ -215,10 +215,10 @@ BonesResult ApplyBones()
 BonesResult ApplyBones()
 {
 	BonesResult result;
-	
+
 	result.Position = aPosition;
 	result.Normal = GetAttrNormal();
-	
+
 	return result;
 }
 #endif

@@ -91,4 +91,3 @@ vec4 ProcessTexel()
 
 	return vec4(color.rgb, alpha);
 }
-

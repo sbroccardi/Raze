@@ -23,7 +23,7 @@ varying vec4 pixelpos;
 //
 //===========================================================================
 
-void main() 
+void main()
 {
 	float fogdist;
 	float fogfactor;
@@ -44,4 +44,3 @@ void main()
 
 	gl_FragColor = vec4(uFogColor.rgb, 1.0 - fogfactor);
 }
-

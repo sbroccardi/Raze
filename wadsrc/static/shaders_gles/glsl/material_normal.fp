@@ -94,7 +94,7 @@ vec3 ProcessMaterialLight(Material material, vec3 color)
 
 	#else
 
-		for(int i=uLightRange.y; i<uLightRange.z; i+=4) 
+		for(int i=uLightRange.y; i<uLightRange.z; i+=4)
 		{
 			dynlight.rgb -= lightContribution(i, normal);
 		}

@@ -20,7 +20,7 @@ Texture filtering modes, currently fixed to linear mipmap
 --------------------------------------
 uTextureMode
 
-0xFFFF = 
+0xFFFF =
 (USES all)
 	TM_NORMAL = 0,	// (r, g, b, a)
 	TM_STENCIL,			// (1, 1, 1, a)
@@ -32,7 +32,7 @@ uTextureMode
 	TM_FOGLAYER,		// (renders a fog layer in the shape of the active texture)
 	TM_FIXEDCOLORMAP = TM_FOGLAYER,
 
-0xF0000 = 
+0xF0000 =
 (USES all)
 	TEXF_Brightmap = 0x10000,
 	TEXF_Detailmap = 0x20000,
@@ -45,11 +45,11 @@ uTextureMode
 
 uPalLightLevels
 
-0xFF = 
+0xFF =
  32 0r 0 or 1
 
-0xFF00 = 
-gl_fogmode :	
+0xFF00 =
+gl_fogmode :
 (USES 2)
 	0, "$OPTVAL_OFF"
 	1, "$OPTVAL_STANDARD"
@@ -72,7 +72,7 @@ gl_lightmode:
 
 
 uTextureAddColor.a -> blendflags
-0x7 = 
+0x7 =
 (USES all)
 const int Tex_Blend_Alpha = 1;
 const int Tex_Blend_Screen = 2;
@@ -80,7 +80,7 @@ const int Tex_Blend_Overlay = 3;
 const int Tex_Blend_Hardlight = 4;
 
 
-0x8 = 
+0x8 =
 Invert blend bit
 
 
