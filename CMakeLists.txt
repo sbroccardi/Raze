@@ -207,14 +207,14 @@ macro( use_fast_math )
 	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ZD_FASTMATH_FLAG}" )
 	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ZD_FASTMATH_FLAG}" )
 endmacro() 
-macro( require_stricmp )
+macro( gz_require_stricmp )
 	CHECK_FUNCTION_EXISTS( stricmp STRICMP_EXISTS )
 	if( NOT STRICMP_EXISTS )
 		add_definitions( -Dstricmp=strcasecmp )
 	endif()
 endmacro()
 
-macro( require_strnicmp )
+macro( gz_require_strnicmp )
 	CHECK_FUNCTION_EXISTS( strnicmp STRNICMP_EXISTS )
 	if( NOT STRNICMP_EXISTS )
 		add_definitions( -Dstrnicmp=strncasecmp )
@@ -425,6 +425,14 @@ else()
 	set( BZIP2_LIBRARY bz2 )
 endif()
 
+# ZMusic is always built from the copy in libraries/: the common code needs the 1.3 API,
+# which system packages usually do not provide yet.
+message( STATUS "Using internal zmusic library" )
+add_subdirectory( libraries/ZMusic )
+set( ZMUSIC_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries/ZMusic/include" )
+set( ZMUSIC_LIBRARIES zmusic )
+set( ZMUSIC_FOUND TRUE )
+
 set( LZMA_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries/lzma/C" )
 
 if( NOT CMAKE_CROSSCOMPILING )
@@ -444,7 +452,7 @@ endif()
 #		COMPONENT "Documentation")
 
 add_subdirectory( libraries/lzma )
-add_subdirectory( libraries/miniz )
+# miniz comes with the internal ZMusic library.
 add_subdirectory( tools )
 add_subdirectory( wadsrc )
 add_subdirectory( source )

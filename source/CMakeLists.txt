@@ -287,8 +287,8 @@ endif()
 
 # Check for functions that may or may not exist.
 
-require_stricmp()
-require_strnicmp()
+gz_require_stricmp()
+gz_require_strnicmp()
 
 if( NOT MSVC )
 	add_definitions( -D__forceinline=inline )
@@ -326,30 +326,7 @@ endif()
 list( APPEND PROJECT_LIBRARIES "zwidget" )
 list( APPEND PROJECT_LIBRARIES "webp" )
 
-# ZMUSIC
-
-if( MSVC )
-	find_package( ZMusic )
-else()
-	find_package( ZMusic REQUIRED )
-endif()
-
 message("Building for target architecture: ${TARGET_ARCHITECTURE}")
-
-if( MSVC AND NOT ZMUSIC_FOUND )
-	# Use prebuilt library
-	set( ZMUSIC_ROOT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../bin/windows/zmusic" )
-	set( ZMUSIC_INCLUDE_DIR ${ZMUSIC_ROOT_PATH}/include )
-	set( ZMUSIC_LIBRARIES zmusiclite )
-	if( X64 )
-		link_directories( ${ZMUSIC_ROOT_PATH}/64bit )
-	elseif( ARM64 )
-		link_directories( ${ZMUSIC_ROOT_PATH}/arm64 )
-	else()
-		link_directories( ${ZMUSIC_ROOT_PATH}/32bit )
-	endif()
-	set( ZMUSIC_FOUND TRUE )
-endif()
 
 
 # VPX
@@ -1459,6 +1436,32 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
 	${CMAKE_SOURCE_DIR}/soundfont/${PROJECT_NAME}.sf2 $<TARGET_FILE_DIR:${PROJECT_NAME}>/soundfonts/${PROJECT_NAME}.sf2
 )
+
+# bring zmusic in
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:zmusic> $<TARGET_FILE_DIR:${PROJECT_NAME}>
+	DEPENDS zmusic )
+if ( NOT WIN32 )
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE_NAME:zmusic> $<TARGET_SONAME_FILE_NAME:zmusic>
+		COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_SONAME_FILE_NAME:zmusic> $<TARGET_LINKER_FILE_NAME:zmusic>
+		WORKING_DIRECTORY $<TARGET_FILE_DIR:${PROJECT_NAME}>
+		DEPENDS zmusic )
+endif()
+
+# macOS' own OpenAL framework does not work on current systems, so bundle OpenAL Soft
+# when it is installed. It gets loaded at runtime from next to the executable.
+if( APPLE AND DYN_OPENAL AND NOT NO_OPENAL )
+	find_file( OPENAL_SOFT_DYLIB libopenal.1.dylib
+		PATHS /opt/homebrew/opt/openal-soft/lib /usr/local/opt/openal-soft/lib
+		NO_DEFAULT_PATH )
+	if( OPENAL_SOFT_DYLIB )
+		add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${OPENAL_SOFT_DYLIB} $<TARGET_FILE_DIR:${PROJECT_NAME}>/libopenal.1.dylib )
+	else()
+		message( STATUS "OpenAL Soft not found, sound will depend on the system's OpenAL framework" )
+	endif()
+endif()
 
 if (VCPKG_TOOLCHAIN)
 	x_vcpkg_install_local_dependencies(TARGETS ${PROJECT_NAME} DESTINATION ".")

@@ -90,3 +90,11 @@ dpadup togglemap
 pad_start pause
 pad_back menu_main
 lthumb crouch 
+lstickleft "+Strafe_Left"
+lstickright "+Strafe_Right"
+lstickup "+Move_Forward"
+lstickdown "+Move_Backward"
+rstickleft "+Turn_Left"
+rstickright "+Turn_Right"
+rstickup "+Aim_Up"
+rstickdown "+Aim_Down"
