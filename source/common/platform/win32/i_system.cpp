@@ -244,6 +244,9 @@ void CalculateCPUSpeed()
         // probably never use the performance statistics.
         min_diff = freq.LowPart * 11 / 200;
 
+		// just in case we were launched with a custom priority class, keep it
+		DWORD OldPriorityClass = GetPriorityClass(GetCurrentProcess());
+
 		// Minimize the chance of task switching during the testing by going very
 		// high priority. This is another reason to avoid timing for too long.
 		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
@@ -258,7 +261,7 @@ void CalculateCPUSpeed()
 		do { QueryPerformanceCounter(&count1); } while ((count1.QuadPart - count2.QuadPart) < min_diff);
 		ClockCalibration.Unclock();
 
-		SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+		SetPriorityClass(GetCurrentProcess(), OldPriorityClass);
 		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
 
 		PerfToSec = double(count1.QuadPart - count2.QuadPart) / (double(ClockCalibration.GetRawCounter()) * freq.QuadPart);
@@ -347,6 +350,17 @@ static void SetQueryIWad(HWND dialog)
 	queryiwad = query;
 }
 
+bool HoldingQueryKey(const char* key)
+{
+	int vkey = 0;
+	if (!stricmp(key, "shift"))
+		vkey = VK_SHIFT;
+	else if (!stricmp(key, "control") || !stricmp(key, "ctrl"))
+		vkey = VK_CONTROL;
+
+	return vkey && GetAsyncKeyState(vkey);
+}
+
 //==========================================================================
 //
 // I_PickIWad
@@ -355,26 +369,13 @@ static void SetQueryIWad(HWND dialog)
 //
 //==========================================================================
 
-int I_PickIWad(WadStuff *wads, int numwads, bool showwin, int defaultiwad, int& autoloadflags, FString &extraArgs)
+bool I_PickIWad(bool showwin, FStartupSelectionInfo& info)
 {
-	int vkey;
-	if (stricmp(queryiwad_key, "shift") == 0)
+	if (showwin)
 	{
-		vkey = VK_SHIFT;
+		return LauncherWindow::ExecModal(info);
 	}
-	else if (stricmp(queryiwad_key, "control") == 0 || stricmp (queryiwad_key, "ctrl") == 0)
-	{
-		vkey = VK_CONTROL;
-	}
-	else
-	{
-		vkey = 0;
-	}
-	if (showwin || (vkey != 0 && GetAsyncKeyState(vkey)))
-	{
-		return LauncherWindow::ExecModal(wads, numwads, defaultiwad, &autoloadflags, &extraArgs);
-	}
-	return defaultiwad;
+	return true;
 }
 
 //==========================================================================
@@ -841,3 +842,19 @@ void I_OpenShellFolder(const char* infolder)
 	}
 }
 
+bool I_IsDarkMode()
+{
+    DWORD value = 1; // default to light
+    DWORD size = sizeof(value);
+
+    HKEY hKey;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER,
+                      L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                      0, KEY_READ, &hKey) == ERROR_SUCCESS)
+    {
+        RegQueryValueExW(hKey, L"AppsUseLightTheme", nullptr, nullptr, reinterpret_cast<LPBYTE>(&value), &size);
+        RegCloseKey(hKey);
+    }
+
+    return value == 0; // 0 means dark mode
+}

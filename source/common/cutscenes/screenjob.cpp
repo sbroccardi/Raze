@@ -123,12 +123,12 @@ void CallCreateFunction(const char* qname, DObject* runner)
 //
 //=============================================================================
 
-DObject* CreateRunner(bool clearbefore)
+DObject* CreateRunner(bool clearbefore, int skipType)
 {
 	auto obj = cutscene.runnerclass->CreateNew();
 	auto func = LookupFunction("ScreenJobRunner.Init", false);
-	VMValue val[3] = { obj, clearbefore, false };
-	VMCall(func, val, 3, nullptr, 0);
+	VMValue val[4] = { obj, clearbefore, false, skipType };
+	VMCall(func, val, 4, nullptr, 0);
 	return obj;
 }
 
@@ -270,8 +270,10 @@ void ScreenJobDraw()
 		ScaleOverrider ovr(twod);
 		IFVIRTUALPTRNAME(cutscene.runner, NAME_ScreenJobRunner, RunFrame)
 		{
+			int ret = 0;
 			VMValue parm[] = { cutscene.runner, smoothratio };
-			VMCall(func, parm, 2, nullptr, 0);
+			VMReturn rets[] = { &ret };
+			VMCall(func, parm, 2, rets, 1);
 		}
 	}
 }

@@ -165,7 +165,7 @@ namespace
 		{ true,				[](uint32_t Width, uint32_t Height)->uint32_t { return 1280; },		           					[](uint32_t Width, uint32_t Height)->uint32_t { return 800; },	        					1.2f,   				false   },	// 4  - 1280x800
 		{ true,				[](uint32_t Width, uint32_t Height)->uint32_t { return vid_scale_customwidth; },				[](uint32_t Width, uint32_t Height)->uint32_t { return vid_scale_customheight; },			1.0f,   				true    },	// 5  - Custom
 		{ true,				[](uint32_t Width, uint32_t Height)->uint32_t { return 320; },		            				[](uint32_t Width, uint32_t Height)->uint32_t { return 200; },			        			1.2f,   				false   },	// 6  - 320x200
-		{ true,				[](uint32_t Width, uint32_t Height)->uint32_t { return v_mfillX2(Width, Height) * 1.2f; },		[](uint32_t Width, uint32_t Height)->uint32_t { return v_mfillY2(Width, Height); },			1.2f,					false   },	// 7  - Minimum Scale to Fill Entire Screen (1.2)
+		{ true,				[](uint32_t Width, uint32_t Height)->uint32_t { return uint32_t(v_mfillX2(Width, Height) * 1.2); },		[](uint32_t Width, uint32_t Height)->uint32_t { return v_mfillY2(Width, Height); },			1.2f,					false   },	// 7  - Minimum Scale to Fill Entire Screen (1.2)
 	};
 	bool isOutOfBounds(int x)
 	{

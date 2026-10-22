@@ -156,6 +156,7 @@ public:
 	const char* GetHash() const { return Hash; }
 
 	int EntryCount() const { return NumLumps; }
+	uint32_t EntryCountU() const { return NumLumps; }
 	int FindEntry(const char* name);
 
 	size_t Length(uint32_t entry)
@@ -166,6 +167,11 @@ public:
 	{
 		return (entry < NumLumps) ? Entries[entry].Position : 0;
 	}
+
+  size_t GetEntryHash(uint32_t entry)
+  {
+    return (entry < NumLumps) ? Entries[entry].CRC32 : 0;
+  }
 
 	// default is the safest reader type.
 	virtual FileReader GetEntryReader(uint32_t entry, int readertype = READER_NEW, int flags = READERFLAG_SEEKABLE);

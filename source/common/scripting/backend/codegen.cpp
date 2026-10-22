@@ -5,6 +5,7 @@
 **
 **---------------------------------------------------------------------------
 ** Copyright 2008-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
 ** All rights reserved.
 **
 ** Redistribution and use in source and binary forms, with or without
@@ -36,6 +37,7 @@
 #include <stdlib.h>
 #include "cmdlib.h"
 #include "codegen.h"
+#include "sc_man.h"
 #include "v_text.h"
 #include "filesystem.h"
 #include "v_video.h"
@@ -387,6 +389,30 @@ void FxExpression::EmitCompare(VMFunctionBuilder *build, bool invert, TArray<siz
 	if (op.Konst)
 	{
 		ScriptPosition.Message(MSG_WARNING, "Conditional expression is constant");
+		ExpEmit temp(build, op.RegType);
+		switch (op.RegType)
+		{
+		case REGT_INT:
+			build->Emit(OP_LK, temp.RegNum, op.RegNum);
+			break;
+
+		case REGT_FLOAT:
+			build->Emit(OP_LKF, temp.RegNum, op.RegNum);
+			break;
+
+		case REGT_POINTER:
+			build->Emit(OP_LKP, temp.RegNum, op.RegNum);
+			break;
+
+		case REGT_STRING:
+			build->Emit(OP_LKS, temp.RegNum, op.RegNum);
+			break;
+
+		default:
+			break;
+		}
+		op.Free(build);
+		op = temp;
 	}
 	switch (op.RegType)
 	{
@@ -1842,7 +1868,7 @@ FxExpression *FxTypeCast::Resolve(FCompileContext &ctx)
 	{
 		goto basereturn;
 	}
-	else if (ctx.Version >= MakeVersion(4, 15, 0) && basex->ValueType == TypeNullPtr && (ValueType == TypeSpriteID || ValueType == TypeTextureID || ValueType == TypeTranslationID))
+	else if (ctx.Version >= MakeVersion(4, 14, 1) && basex->ValueType == TypeNullPtr && (ValueType == TypeSpriteID || ValueType == TypeTextureID || ValueType == TypeTranslationID))
 	{
 		delete basex;
 		basex = new FxConstant(0, ScriptPosition);
@@ -3302,11 +3328,11 @@ FxExpression *FxAddSub::Resolve(FCompileContext& ctx)
 
 	if (compileEnvironment.CheckForCustomAddition)
 	{
-		auto result = compileEnvironment.CheckForCustomAddition(this, ctx);
-		if (result)
+		auto expr = compileEnvironment.CheckForCustomAddition(this, ctx);
+		if (expr)
 		{
-			ABORT(right);
-			goto goon;
+			delete this;
+			return expr->Resolve(ctx);
 		}
 	}
 
@@ -4671,8 +4697,8 @@ ExpEmit FxShift::Emit(VMFunctionBuilder *build)
 //
 //==========================================================================
 
-FxLtGtEq::FxLtGtEq(FxExpression *l, FxExpression *r)
-	: FxBinary(TK_LtGtEq, l, r)
+FxSpaceship::FxSpaceship(int op, FxExpression *l, FxExpression *r)
+	: FxBinary(op, l, r)
 {
 	ValueType = TypeSInt32;
 }
@@ -4683,7 +4709,7 @@ FxLtGtEq::FxLtGtEq(FxExpression *l, FxExpression *r)
 //
 //==========================================================================
 
-FxExpression *FxLtGtEq::Resolve(FCompileContext& ctx)
+FxExpression *FxSpaceship::Resolve(FCompileContext& ctx)
 {
 	CHECKRESOLVED();
 
@@ -4695,13 +4721,28 @@ FxExpression *FxLtGtEq::Resolve(FCompileContext& ctx)
 		return nullptr;
 	}
 
+	if(ctx.Version >= MakeVersion(4, 15, 1))
+	{
+		if(Operator == TK_LtGtEq)
+		{
+			ScriptPosition.Message(MSG_WARNING, "<>= is deprecated in favor of <=>");
+		}
+	}
+	else if(Operator == TK_LtEqGt)
+	{
+		ScriptPosition.Message(MSG_ERROR, "<=> requires ZScript version 4.15.1 or above");
+		delete this;
+		return nullptr;
+	}
+
+
 	if (left->IsNumeric() && right->IsNumeric())
 	{
 		Promote(ctx);
 	}
 	else
 	{
-		ScriptPosition.Message(MSG_ERROR, "<>= expects two numeric operands");
+		ScriptPosition.Message(MSG_ERROR, "%s expects two numeric operands", (Operator == TK_LtEqGt) ? "<=>" : "<>=");
 		delete this;
 		return nullptr;
 	}
@@ -4724,7 +4765,7 @@ FxExpression *FxLtGtEq::Resolve(FCompileContext& ctx)
 //
 //==========================================================================
 
-ExpEmit FxLtGtEq::Emit(VMFunctionBuilder *build)
+ExpEmit FxSpaceship::Emit(VMFunctionBuilder *build)
 {
 	ExpEmit op1 = left->Emit(build);
 	ExpEmit op2 = right->Emit(build);
@@ -6677,7 +6718,7 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 			}
 			FxExpression *self = new FxSelf(ScriptPosition);
 			self = self->Resolve(ctx);
-			newex = ResolveMember(ctx, ctx.Function->Variants[0].SelfClass, self, ctx.Function->Variants[0].SelfClass);
+			newex = ResolveMember(ctx, ctx.Function->Variants[0].SelfClass, self, ctx.Function->Variants[0].SelfClass, ctx.Function->Variants[0].Flags & VARF_SafeConst);
 			ABORT(newex);
 			goto foundit;
 		}
@@ -6783,11 +6824,8 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 			{
 				if (sym->mVersion <= ctx.Version)
 				{
-					// Allow use of deprecated symbols in deprecated functions of the internal code. This is meant to allow deprecated code to remain as it was, 
-					// even if it depends on some deprecated symbol. 
-					// The main motivation here is to keep the deprecated static functions accessing the global level variable as they were.
-					// Print these only if debug output is active and at the highest verbosity level.
-					const bool internal = (ctx.Function->Variants[0].Flags & VARF_Deprecated) && fileSystem.GetFileContainer(ctx.Lump) == 0;
+					// Allow use of deprecated symbols in the internal code.
+					const bool internal = fileSystem.GetFileContainer(ctx.Lump) == 0;
 					const FString &deprecationMessage = vsym->DeprecationMessage;
 
 					ScriptPosition.Message(internal ? MSG_DEBUGMSG : MSG_WARNING, 
@@ -6842,7 +6880,7 @@ foundit:
 //
 //==========================================================================
 
-FxExpression *FxIdentifier::ResolveMember(FCompileContext &ctx, PContainerType *classctx, FxExpression *&object, PContainerType *objtype)
+FxExpression *FxIdentifier::ResolveMember(FCompileContext &ctx, PContainerType *classctx, FxExpression *&object, PContainerType *objtype, bool isConst)
 {
 	PSymbol *sym;
 	PSymbolTable *symtbl;
@@ -6877,8 +6915,12 @@ FxExpression *FxIdentifier::ResolveMember(FCompileContext &ctx, PContainerType *
 			{
 				if (sym->mVersion <= ctx.Version)
 				{
+					// Allow use of deprecated symbols in internal code.
+					const bool internal = fileSystem.GetFileContainer(ctx.Lump) == 0;
 					const FString &deprecationMessage = vsym->DeprecationMessage;
-					ScriptPosition.Message(MSG_WARNING, "Accessing deprecated member variable %s - deprecated since %d.%d.%d%s%s", sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision,
+
+					ScriptPosition.Message(internal ? MSG_DEBUGMSG : MSG_WARNING,
+						"Accessing deprecated member variable %s - deprecated since %d.%d.%d%s%s", sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision,
 						deprecationMessage.IsEmpty() ? "" : ", ", deprecationMessage.GetChars());
 				}
 			}
@@ -6931,7 +6973,7 @@ FxExpression *FxIdentifier::ResolveMember(FCompileContext &ctx, PContainerType *
 				}
 			}
 
-			auto x = isclass ? new FxClassMember(object, vsym, ScriptPosition) : new FxStructMember(object, vsym, ScriptPosition);
+			auto x = isclass ? new FxClassMember(object, vsym, ScriptPosition, isConst) : new FxStructMember(object, vsym, ScriptPosition, isConst);
 			object = nullptr;
 			return x->Resolve(ctx);
 		}
@@ -7586,8 +7628,8 @@ FxMemberBase::FxMemberBase(EFxType type, PField *f, const FScriptPosition &p)
 }
 
 
-FxStructMember::FxStructMember(FxExpression *x, PField* mem, const FScriptPosition &pos)
-	: FxMemberBase(EFX_StructMember, mem, pos)
+FxStructMember::FxStructMember(FxExpression *x, PField* mem, const FScriptPosition &pos, bool isConst)
+	: FxMemberBase(EFX_StructMember, mem, pos), IsConst(isConst)
 {
 	classx = x;
 }
@@ -7637,7 +7679,7 @@ bool FxStructMember::RequestAddress(FCompileContext &ctx, bool *writable)
 				bWritable = false;
 		}
 
-		*writable = bWritable;
+		*writable = bWritable && !IsConst;
 	}
 	return true;
 }
@@ -7848,8 +7890,8 @@ ExpEmit FxStructMember::Emit(VMFunctionBuilder *build)
 //
 //==========================================================================
 
-FxClassMember::FxClassMember(FxExpression *x, PField* mem, const FScriptPosition &pos)
-: FxStructMember(x, mem, pos)
+FxClassMember::FxClassMember(FxExpression *x, PField* mem, const FScriptPosition &pos, bool isConst)
+: FxStructMember(x, mem, pos, isConst)
 {
 	ExprType = EFX_ClassMember;
 }
@@ -8047,7 +8089,6 @@ ExpEmit FxArrayElement::Emit(VMFunctionBuilder *build)
 	{
 		arraytype = static_cast<PArray*>(Array->ValueType);
 	}
-	ExpEmit arrayvar = Array->Emit(build);
 	ExpEmit start;
 	ExpEmit bound;
 	bool nestedarray = false;
@@ -8055,31 +8096,99 @@ ExpEmit FxArrayElement::Emit(VMFunctionBuilder *build)
 	if (SizeAddr != ~0u)
 	{
 		bool ismeta = Array->ExprType == EFX_ClassMember && static_cast<FxClassMember*>(Array)->membervar->Flags & VARF_Meta;
-
-		start = ExpEmit(build, REGT_POINTER);
-		build->Emit(OP_LP, start.RegNum, arrayvar.RegNum, build->GetConstantInt(0));
-
+		
 		auto f = Create<PField>(NAME_None, TypeUInt32, ismeta? VARF_Meta : 0, SizeAddr);
 		auto arraymemberbase = static_cast<FxMemberBase *>(Array);
 
-		auto origmembervar = arraymemberbase->membervar;
-		auto origaddrreq = arraymemberbase->AddressRequested;
-		auto origvaluetype = Array->ValueType;
+		if (Array->ExprType == EFX_StructMember || Array->ExprType == EFX_ClassMember)
+		{
+			struct DummyVar : public FxExpression
+			{
+				ExpEmit dummy;
+				DummyVar(ExpEmit e) : FxExpression(EFX_Expression,{}), dummy(e){}
+				ExpEmit Emit(VMFunctionBuilder *build)
+				{
+					return dummy;
+				};
+			};
 
-		arraymemberbase->membervar = f;
-		arraymemberbase->AddressRequested = false;
-		Array->ValueType = TypeUInt32;
+			//fix expression bug
+			FxStructMember * orig = static_cast<FxStructMember *>(Array);
+			FxExpression * prev = orig->classx;
+			ExpEmit objvar = prev->Emit(build);
+			bool wasFixed = objvar.Fixed;
 
-		bound = Array->Emit(build);
+			objvar.Fixed = true;
 
-		arraymemberbase->membervar = origmembervar;
-		arraymemberbase->AddressRequested = origaddrreq;
-		Array->ValueType = origvaluetype;
+			orig->classx = new DummyVar(objvar);
+			orig->classx->ValueType = prev->ValueType;
+			ExpEmit arrayvar = Array->Emit(build);
+			start = ExpEmit(build, REGT_POINTER);
+			delete orig->classx;
+			orig->classx = prev;
 
-		arrayvar.Free(build);
+			build->Emit(OP_LP, start.RegNum, arrayvar.RegNum, build->GetConstantInt(0));
+
+			if(ismeta)
+			{
+				// [Jay0]
+				// ugh do it the old way for meta since i don't want to duplicate that code here, but this time it only double-emits the member access, not the function call, so no bad side-effects, still not "right" though
+				// TODO handle meta better
+
+				auto origmembervar = arraymemberbase->membervar;
+				auto origaddrreq = arraymemberbase->AddressRequested;
+				auto origvaluetype = Array->ValueType;
+
+				arraymemberbase->membervar = f;
+				arraymemberbase->AddressRequested = false;
+				Array->ValueType = TypeUInt32;
+
+				bound = Array->Emit(build);
+
+				arraymemberbase->membervar = origmembervar;
+				arraymemberbase->AddressRequested = origaddrreq;
+				Array->ValueType = origvaluetype;
+			}
+			else
+			{
+				bound = ExpEmit(build, REGT_INT);
+				build->Emit(OP_LW, bound.RegNum, objvar.RegNum, build->GetConstantInt((int)SizeAddr));
+			}
+
+			objvar.Fixed = wasFixed;
+			objvar.Free(build);
+			arrayvar.Free(build);
+		}
+		else
+		{   
+			// [Jay0]
+			// now only runs for global variables and stack variables, so the double-emit is """fine"""
+			// TODO replace this entirely with something better still
+			
+			ExpEmit arrayvar = Array->Emit(build);
+
+			start = ExpEmit(build, REGT_POINTER);
+			build->Emit(OP_LP, start.RegNum, arrayvar.RegNum, build->GetConstantInt(0));
+
+			auto origmembervar = arraymemberbase->membervar;
+			auto origaddrreq = arraymemberbase->AddressRequested;
+			auto origvaluetype = Array->ValueType;
+
+			arraymemberbase->membervar = f;
+			arraymemberbase->AddressRequested = false;
+			Array->ValueType = TypeUInt32;
+
+			bound = Array->Emit(build);
+
+			arraymemberbase->membervar = origmembervar;
+			arraymemberbase->AddressRequested = origaddrreq;
+			Array->ValueType = origvaluetype;
+			arrayvar.Free(build);
+		}
 	}
 	else if ((Array->ExprType == EFX_ArrayElement || Array->ExprType == EFX_OutVarDereference) && Array->isStaticArray())
 	{
+		ExpEmit arrayvar = Array->Emit(build);
 		bound = ExpEmit(build, REGT_INT);
 		build->Emit(OP_LW, bound.RegNum, arrayvar.RegNum, build->GetConstantInt(myoffsetof(FArray, Count)));
 
@@ -8089,7 +8198,10 @@ ExpEmit FxArrayElement::Emit(VMFunctionBuilder *build)
 
 		nestedarray = true;
 	}
-	else start = arrayvar;
+	else
+	{
+		start = Array->Emit(build);
+	}
 
 	if (index->isConstant())
 	{
@@ -8883,7 +8995,7 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 			return Self;
 		}
 	}
-	else if (ctx.Version >= MakeVersion(4, 15, 0) && Self->ValueType == TypeSound && MethodName == NAME_IsValid)
+	else if (ctx.Version >= MakeVersion(4, 14, 1) && Self->ValueType == TypeSound && MethodName == NAME_IsValid)
 	{
 		if (ArgList.Size() > 0)
 		{
@@ -8900,7 +9012,7 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 		delete this;
 		return x;
 	}
-	else if (Self->ValueType == TypeTextureID || (ctx.Version >= MakeVersion(4, 15, 0) && (Self->ValueType == TypeTranslationID)))
+	else if (Self->ValueType == TypeTextureID || (ctx.Version >= MakeVersion(4, 14, 1) && (Self->ValueType == TypeTranslationID)))
 	{
 		if (MethodName == NAME_IsValid || MethodName == NAME_IsNull || MethodName == NAME_Exists || MethodName == NAME_SetInvalid || MethodName == NAME_SetNull)
 		{
@@ -8943,7 +9055,7 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 		}
 	}
 
-	else if (ctx.Version >= MakeVersion(4, 15, 0) && Self->ValueType == TypeSpriteID)
+	else if (ctx.Version >= MakeVersion(4, 14, 1) && Self->ValueType == TypeSpriteID)
 	{
 		if (MethodName == NAME_IsValid || MethodName == NAME_IsEmpty || MethodName == NAME_IsFixed || MethodName == NAME_IsKeep
 			|| MethodName == NAME_Exists
@@ -9038,7 +9150,7 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 	else if (Self->IsQuaternion())
 	{
 		// Reuse vector built-ins for quaternion
-		if (MethodName == NAME_Length || MethodName == NAME_LengthSquared || MethodName == NAME_Unit)
+		if (MethodName == NAME_Length || MethodName == NAME_LengthSquared || MethodName == NAME_Unit || MethodName == NAME_Conjugate || MethodName == NAME_Inverse)
 		{
 			if (ArgList.Size() > 0)
 			{
@@ -9661,8 +9773,12 @@ bool FxVMFunctionCall::CheckAccessibility(const VersionInfo &ver)
 	{
 		if (Function->mVersion <= ver)
 		{
+			// Allow use of deprecated symbols in internal code.
+			const bool internal = fileSystem.GetFileContainer(Function->OwningClass->mDefFileNo) == 0;
 			const FString &deprecationMessage = Function->Variants[0].DeprecationMessage;
-			ScriptPosition.Message(MSG_WARNING, "Accessing deprecated function %s - deprecated since %d.%d.%d%s%s", Function->SymbolName.GetChars(), Function->mVersion.major, Function->mVersion.minor, Function->mVersion.revision, 
+
+			ScriptPosition.Message(internal ? MSG_DEBUGMSG : MSG_WARNING,
+				"Accessing deprecated function %s - deprecated since %d.%d.%d%s%s", Function->SymbolName.GetChars(), Function->mVersion.major, Function->mVersion.minor, Function->mVersion.revision, 
 				deprecationMessage.IsEmpty() ? "" : ", ", deprecationMessage.GetChars());
 		}
 	}
@@ -10332,6 +10448,9 @@ FxExpression *FxVectorBuiltin::Resolve(FCompileContext &ctx)
 		ValueType = TypeFloat64;
 		break;
 
+	case NAME_Conjugate:
+	case NAME_Inverse:
+		assert(Self->IsQuaternion());
 	case NAME_Unit:
 		ValueType = Self->ValueType;
 		break;
@@ -10382,6 +10501,18 @@ ExpEmit FxVectorBuiltin::Emit(VMFunctionBuilder *build)
 		ExpEmit len(build, REGT_FLOAT);
 		build->Emit(vecSize == 2 ? OP_LENV2 : vecSize == 3 ? OP_LENV3 : OP_LENV4, len.RegNum, op.RegNum);
 		build->Emit(vecSize == 2 ? OP_DIVVF2_RR : vecSize == 3 ? OP_DIVVF3_RR : OP_DIVVF4_RR, to.RegNum, op.RegNum, len.RegNum);
+		len.Free(build);
+	}
+	else if (Function == NAME_Conjugate)
+	{
+		build->Emit(OP_CONJQ, to.RegNum, op.RegNum);
+	}
+	else if (Function == NAME_Inverse)
+	{
+		ExpEmit len(build, REGT_FLOAT);
+		build->Emit(OP_DOTV4_RR, len.RegNum, op.RegNum, op.RegNum);
+		build->Emit(OP_CONJQ, to.RegNum, op.RegNum);
+		build->Emit(OP_DIVVF4_RR, to.RegNum, to.RegNum, len.RegNum);
 		len.Free(build);
 	}
 	else if (Function == NAME_Angle)
@@ -10849,12 +10980,17 @@ FxExpression *FxCompoundStatement::Resolve(FCompileContext &ctx)
 
 ExpEmit FxCompoundStatement::Emit(VMFunctionBuilder *build)
 {
+	auto start = build->GetAddress();
 	auto e = FxSequence::Emit(build);
+	TArray<VMLocalVariable> locals;
 	// Release all local variables in this block.
 	for (auto l : LocalVars)
 	{
+		locals.Push({l->Name, l->ValueType, l->VarFlags, l->RegCount, l->RegNum, l->ScriptPosition.ScriptLine, l->StackOffset});
 		l->Release(build);
 	}
+	auto end = build->GetAddress();
+	build->AddBlock(locals, start, end);
 	return e;
 }
 
@@ -12338,7 +12474,7 @@ static PClass *NativeNameToClass(int _clsname, PClass *desttype)
 	if (clsname != NAME_None)
 	{
 		cls = PClass::FindClass(clsname);
-		if (cls != nullptr && (cls->VMType == nullptr || !cls->IsDescendantOf(desttype)))
+		if (cls != nullptr && (cls->VMType == nullptr || (desttype != nullptr && !cls->IsDescendantOf(desttype))))
 		{
 			// does not match required parameters or is invalid.
 			return nullptr;
@@ -12719,16 +12855,15 @@ ExpEmit FxFunctionPtrCast::Emit(VMFunctionBuilder *build)
 FxLocalVariableDeclaration::FxLocalVariableDeclaration(PType *type, FName name, FxExpression *initval, int varflags, const FScriptPosition &p)
 	:FxExpression(EFX_LocalVariableDeclaration, p)
 {
-	// Local FVector isn't different from Vector
-	if (type == TypeFVector2) type = TypeVector2;
-	else if (type == TypeFVector3) type = TypeVector3;
-	else if (type == TypeFVector4) type = TypeVector4;
-	else if (type == TypeFQuaternion) type = TypeQuaternion;
+	if(type != type->GetLocalType())
+	{
+		ScriptPosition.Message(MSG_WARNING, "Type '%s' not allowed in local variables, changing to '%s'", type->DescriptiveName(), type->GetLocalType()->DescriptiveName());
+	}
 
-	ValueType = type;
+	ValueType = type->GetLocalType();
 	VarFlags = varflags;
 	Name = name;
-	RegCount = type->RegCount;
+	RegCount = ValueType->RegCount;
 	Init = initval;
 	clearExpr = nullptr;
 }

@@ -4,6 +4,7 @@
 **---------------------------------------------------------------------------
 ** Copyright 2005-2016 Randy Heit
 ** Copyright 2005-2016 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
 ** All rights reserved.
 **
 ** Redistribution and use in source and binary forms, with or without
@@ -177,6 +178,7 @@ std2:
 		/* Other keywords from UnrealScript */
 		'abstract'					{ RET(TK_Abstract); }
 		'foreach'					{ RET(ParseVersion >= MakeVersion(4, 10, 0)? TK_ForEach : TK_Identifier); }
+		'unsafe'					{ RET(ParseVersion >= MakeVersion(4, 15, 1)? TK_Unsafe : TK_Identifier); }
 		'true'						{ RET(TK_True); }
 		'false'						{ RET(TK_False); }
 		'none'						{ RET(TK_None); }
@@ -271,6 +273,7 @@ std2:
 		"!="						{ RET(TK_Neq); }
 		"~=="						{ RET(TK_ApproxEq); }
 		"<>="						{ RET(TK_LtGtEq); }
+		"<=>"						{ RET(TK_LtEqGt); }
 		"**"						{ RET(TK_MulMul); }
 		"::"						{ RET(TK_ColonColon); }
 		"->"						{ RET(TK_Arrow); }

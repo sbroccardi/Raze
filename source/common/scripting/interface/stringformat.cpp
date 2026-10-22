@@ -526,6 +526,27 @@ DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, CharLower, StringCharLower)
 	ACTION_RETURN_INT(StringCharLower(ch));
 }
 
+static int StringIsInt(FString *self)
+{
+	return self->IsInt();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, IsInt, StringIsInt)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	ACTION_RETURN_INT(self->IsInt());
+}
+
+static int StringIsDouble(FString *self)
+{
+	return self->IsFloat();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, IsDouble, StringIsDouble)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	ACTION_RETURN_INT(self->IsFloat());
+}
 
 static int StringToInt(FString *self, int base)
 {
@@ -562,6 +583,52 @@ DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, Substitute, StringSubst)
 	PARAM_STRING(replc);
 	StringSubst(self, substr, replc);
 	return 0;
+}
+
+static int StringCompare(FString *self, const FString &other)
+{
+	return self->Compare(other);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, Compare, StringCompare)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_STRING(other);
+	ACTION_RETURN_INT(StringCompare(self, other));
+}
+
+static int StringCompareNoCase(FString *self, const FString &other)
+{
+	return self->CompareNoCase(other);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, CompareNoCase, StringCompareNoCase)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_STRING(other);
+	ACTION_RETURN_INT(StringCompareNoCase(self, other));
+}
+
+static int StringIsEmpty(FString *self)
+{
+	return self->IsEmpty();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, IsEmpty, StringIsEmpty)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	ACTION_RETURN_INT(StringIsEmpty(self));
+}
+
+static int StringIsNotEmpty(FString *self)
+{
+	return self->IsNotEmpty();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, IsNotEmpty, StringIsNotEmpty)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	ACTION_RETURN_INT(StringIsNotEmpty(self));
 }
 
 static void StringStripRight(FString* self, const FString& junk)
