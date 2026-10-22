@@ -465,7 +465,8 @@ public:
 		if (fb == nullptr)
 		{
 #ifdef HAVE_GLES2
-			if(V_GetBackend() != 0)
+			// Only use GLES when it was asked for. If Vulkan failed to start, fall back to regular OpenGL.
+			if(V_GetBackend() == 2)
 				fb = new OpenGLESRenderer::OpenGLFrameBuffer(0, vid_fullscreen);
 			else
 #endif
