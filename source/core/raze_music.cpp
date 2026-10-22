@@ -45,6 +45,9 @@
 #include "gamecontrol.h"
 #include "serializer.h"
 
+EXTERN_FARG(nomusic);
+EXTERN_FARG(nosound);
+
 static bool mus_blocked;
 static FString lastStartedMusic;
 TArray<FString> specialmusic;
@@ -221,7 +224,7 @@ void Mus_UpdateMusic()
 
 void Mus_InitMusic()
 {
-	I_InitMusic(Args->CheckParm("-nomusic") || Args->CheckParm("-nosound"));
+	I_InitMusic(Args->CheckParm(FArg_nomusic) || Args->CheckParm(FArg_nosound));
 	static MusicCallbacks mus_cb =
 	{
 		LookupMusicCB,

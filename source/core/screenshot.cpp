@@ -41,6 +41,9 @@
 #include "c_dispatch.h"
 #include "v_video.h"
 
+FARG(shotdir, "Configuration", "Sets the directory for screenshots.", "path",
+	"Saves screenshots in the given directory instead of the one set by the screenshot_dir CVAR.");
+
 EXTERN_CVAR(Float, png_gamma)
 //
 // screencapture
@@ -83,7 +86,7 @@ static int SaveScreenshot()
 	PalEntry Palette[256];
 
 	size_t dirlen;
-	FString autoname = Args->CheckValue("-shotdir");
+	FString autoname = Args->CheckValue(FArg_shotdir);
 	if (autoname.IsEmpty())
 	{
 		autoname = screenshot_dir;

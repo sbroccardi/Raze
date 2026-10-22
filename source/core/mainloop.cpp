@@ -89,6 +89,7 @@
 #include "texinfo.h"
 #include "texturemanager.h"
 #include "gameinput.h"
+#include "g_levellocals.h"
 
 CVAR(Bool, vid_activeinbackground, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool, r_ticstability, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -114,6 +115,9 @@ bool r_NoInterpolate;
 int entertic;
 int oldentertics;
 int gametic;
+
+static FLevelLocals RazeLevelLocals;
+FLevelLocals* primaryLevel = &RazeLevelLocals;
 int nextwipe = wipe_None;
 
 FString savename;

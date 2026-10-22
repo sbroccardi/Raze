@@ -45,6 +45,9 @@
 #include "m_argv.h"
 #include "gamestruct.h"
 
+FARG(nowidescreen, "Loading", "Disables the widescreen graphics.", "",
+	"Does not load the game's widescreen graphics definitions.");
+
 const char* G_DefFile(void);
 void loaddefinitionsfile(TilesetBuildInfo& info, const char* fn, bool cumulative = false, bool maingrp = false);
 
@@ -146,7 +149,7 @@ static void LoadDefinitions(TilesetBuildInfo& info)
 	}
 
 	// load the widescreen replacements last. This ensures that mods still get the correct CRCs for their own tile replacements.
-	if (fileSystem.FindFile("engine/widescreen.def") >= 0 && !Args->CheckParm("-nowidescreen"))
+	if (fileSystem.FindFile("engine/widescreen.def") >= 0 && !Args->CheckParm(FArg_nowidescreen))
 	{
 		loaddefinitionsfile(info, "engine/widescreen.def");
 	}

@@ -50,7 +50,15 @@
 
 #if !defined _MSC_VER && !defined __APPLE__
 #include "i_system.h"  // for SHARE_DIR
+
 #endif // !_MSC_VER && !__APPLE__
+
+FARG(config, "Configuration", "Uses a different configuration file.", "file.ini",
+	"Uses the given configuration file instead of the default one.");
+FARG(noautoexec, "Loading", "Prevents the execution of autoexec.cfg files.", "",
+	"Disables the execution of the autoexec.cfg files.");
+FARG(exec, "Loading", "Executes console scripts at startup.", "file1.cfg ...",
+	"Executes the given console script files at startup.");
 
 FGameConfigFile::FGameConfigFile ()
 {
@@ -534,7 +542,7 @@ FString FGameConfigFile::GetConfigPath (bool tryProg)
 {
 	const char *pathval;
 
-	pathval = Args->CheckValue ("-config");
+	pathval = Args->CheckValue(FArg_config);
 	if (pathval != NULL)
 	{
 		return FString(pathval);
@@ -577,7 +585,7 @@ void FGameConfigFile::AddAutoexec (FArgs *list, const char *game)
 				FString expanded_path = ExpandEnvVars(value);
 				if (FileExists(expanded_path))
 				{
-					list->AppendArg (ExpandEnvVars(value));
+					list->AppendRawArg (ExpandEnvVars(value));
 				}
 			}
 		}
@@ -622,13 +630,13 @@ void G_ReadConfig(const char* game)
 	// Process automatically executed files
 	FExecList *exec;
 	FArgs *execFiles = new FArgs;
-	if (!(Args->CheckParm("-noautoexec")))
+	if (!(Args->CheckParm(FArg_noautoexec)))
 		GameConfig->AddAutoexec(execFiles, game);
 	exec = D_MultiExec(execFiles, NULL);
 	delete execFiles;
 
 	// Process .cfg files at the start of the command line.
-	execFiles = Args->GatherFiles ("-exec");
+	execFiles = Args->GatherFiles(FArg_exec);
 	exec = D_MultiExec(execFiles, exec);
 	delete execFiles;
 

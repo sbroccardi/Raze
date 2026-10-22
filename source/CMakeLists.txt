@@ -1008,6 +1008,7 @@ set (PCH_SOURCES
 	widgets/settingspage.cpp
 	widgets/themedata.cpp
 	widgets/widgetresourcedata.cpp
+	utility/colorspace.cpp
 
 	common/audio/sound/i_sound.cpp
 	common/audio/sound/oalsound.cpp

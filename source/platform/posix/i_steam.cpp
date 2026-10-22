@@ -171,7 +171,7 @@ const char *AppInfo[] =
 #endif
 };
 
-TArray<FString> I_GetSteamPath()
+TArray<FString> I_GetSteamPaths()
 {
 	TArray<FString> result;
 	TArray<FString> SteamInstallFolders;

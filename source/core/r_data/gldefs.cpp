@@ -51,6 +51,9 @@
 #include "gameconfigfile.h"
 #include "m_argv.h"
 
+FARG_ADVANCED(shaderuniformtest, "Debug", "",
+	"Disables the CVAR binding of shader uniforms defined in GLDEFS, to test them.");
+
 #if 0
 void AddLightDefaults(FLightDefaults *defaults, double attnFactor);
 void AddLightAssociation(const char *actor, const char *frame, const char *light);
@@ -1568,7 +1571,7 @@ class GLDefsParser
 
 						val.Float = oldval.Float = (float)sc.Float;
 
-						if (!Args->CheckParm ("-shaderuniformtest"))
+						if (!Args->CheckParm(FArg_shaderuniformtest))
 						{
 							// these aren't really release-ready, so lock them behind a command-line argument for now.
 							sc.ScriptMessage("Warning - Use -shaderuniformtest to enable shader uniforms!");

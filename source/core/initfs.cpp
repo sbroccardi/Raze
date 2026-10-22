@@ -49,6 +49,13 @@
 #include "startupinfo.h"
 #include "files.h"
 
+FARG(insertdirafter, "Loading", "Loads directories after GRP and RFF files.", "",
+	"Changes the load order so that directories given with -game_dir come after the game's GRP and RFF files.");
+FARG(noautoload, "Loading", "Prevents loading files automatically from config.", "",
+	"Prevents files from being autoloaded based on the \"AutoLoad\" sections in the user's configuration file.");
+FARG(dumpfs, "Debug", "Lists the contents of the file system.", "",
+	"Prints all files in the virtual file system after it has been set up.");
+
 using namespace FileSys;
 
 #ifndef PATH_MAX
@@ -335,7 +342,7 @@ void InitFileSystem(TArray<GrpEntry>& groups)
 	const char* baseres = BaseFileSearch(ENGINERES_FILE, nullptr, true, GameConfig);
 	D_AddFile(Files, baseres, true, -1, GameConfig);
 
-	bool insertdirectoriesafter = Args->CheckParm("-insertdirafter");
+	bool insertdirectoriesafter = Args->CheckParm(FArg_insertdirafter);
 
 	int i = groups.Size()-1;
 	FString fn;
@@ -376,7 +383,7 @@ void InitFileSystem(TArray<GrpEntry>& groups)
 	fileSystem.SetIwadNum(1);
 	fileSystem.SetMaxIwadNum((int)Files.size() - 1);
 
-	if (!Args->CheckParm("-noautoload"))
+	if (!Args->CheckParm(FArg_noautoload))
 	{
 		D_AddConfigFiles(Files, "Global.Autoload", "*.grp", GameConfig);
 
@@ -446,8 +453,9 @@ void InitFileSystem(TArray<GrpEntry>& groups)
 	{
 		DeleteStuff(fileSystem, todelete, groups.Size());
 	};
-	fileSystem.InitMultipleFiles(Files, &lfi, FileSystemPrintf);
-	if (Args->CheckParm("-dumpfs"))
+	std::vector<std::string> noOptionalFiles;
+	fileSystem.InitMultipleFiles(Files, noOptionalFiles, &lfi, FileSystemPrintf);
+	if (Args->CheckParm(FArg_dumpfs))
 	{
 		FILE* f = fopen("filesystem.dir", "wb");
 		for (int num = 0; num < fileSystem.GetNumEntries(); num++)

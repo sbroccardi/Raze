@@ -153,7 +153,7 @@ std::vector<std::string> GetGameFronUserFiles();
 void InitFileSystem(TArray<GrpEntry>&);
 void I_SetWindowTitle(const char* caption);
 void S_ParseSndInfo();
-void I_DetectOS(void);
+FString I_DetectOS(void);
 void LoadScripts();
 void MainLoop();
 void SetConsoleNotifyBuffer();
@@ -315,17 +315,109 @@ DEFINE_FIELD_X(UserConfigStruct, UserConfig, nomonsters)
 DEFINE_FIELD_X(UserConfigStruct, UserConfig, nosound)
 DEFINE_FIELD_X(UserConfigStruct, UserConfig, nologo)
 
+//==========================================================================
+//
+// Command line options
+//
+//==========================================================================
+
+EXTERN_FARG(nosfx);
+EXTERN_FARG(nosound);
+
+FARG(iwad, "Configuration", "Specifies the main game file.", "file.grp",
+	"Selects the game's main resource file. Same as -gamegrp, for launchers that only know -iwad.");
+FARG(gamegrp, "Configuration", "Specifies the main game file.", "file.grp",
+	"Selects the game's main resource file.");
+FARG(savedir, "Configuration", "Sets an alternate directory for saving game files.", "path",
+	"Specifies an alternate directory to use for saved files. If this is not specified, " GAMENAME
+	" stores them in the directory indicated by the save_dir CVAR.");
+FARG(setup, "Configuration", "Shows the game selection window.", "",
+	"Always shows the game selection window at startup.");
+FARG(nosetup, "Configuration", "Skips the game selection window.", "",
+	"Never shows the game selection window at startup.");
+FARG(cfg, "Configuration", "Not supported.", "file",
+	"Build-format config files are not supported and will be ignored.");
+FARG_ADVANCED(setupfile, "Configuration", "file", "Same as -cfg.");
+
+FARG(addon, "Game", "Selects a Duke Nukem 3D addon.", "n",
+	"Selects an addon by number: 0 = Duke Nukem 3D, 1 = Duke It Out in D.C., 2 = Nuclear Winter, 3 = Duke Caribbean.");
+FARG(nam, "Game", "Plays NAM.", "", "Selects NAM.GRP as the game.");
+FARG(napalm, "Game", "Plays Napalm.", "", "Selects NAPALM.GRP as the game.");
+FARG(ww2gi, "Game", "Plays World War II GI.", "", "Selects WW2GI.GRP as the game.");
+FARG(route66, "Game", "Plays Redneck Rampage: Suckin' Grits on Route 66.", "",
+	"Sets up the Route 66 addon from its loose files.");
+FARG(cryptic, "Game", "Plays Blood: Cryptic Passage.", "",
+	"Sets up the Cryptic Passage addon from its loose files.");
+
+FARG(file, "Loading", "Loads one or more files or directories.", "file1 file2 ...",
+	"Loads the given files and directories in order. When used, the Build-style -grp, -rff and -game_dir options are ignored.");
+FARG(grp, "Loading", "Loads one or more GRP files (Build style).", "file1 file2 ...",
+	"Loads the given GRP files after RFF files and before directories.");
+FARG_ADVANCED(g, "Loading", "file1 file2 ...", "Same as -grp.");
+FARG(rff, "Loading", "Loads one or more RFF files (Build style).", "file1 file2 ...",
+	"Loads the given RFF files with the lowest priority.");
+FARG_ADVANCED(snd, "Loading", "file1 file2 ...", "Same as -rff.");
+FARG(game_dir, "Loading", "Loads one or more directories (Build style).", "dir1 dir2 ...",
+	"Loads the given directories with the highest priority.");
+FARG_ADVANCED(j, "Loading", "dir1 dir2 ...", "Same as -game_dir.");
+FARG(art, "Loading", "Loads additional ART files.", "file1.art ...", "Loads additional tile files.");
+FARG(rts, "Loading", "Loads an RTS file.", "file.rts", "Uses the given remote ridicule file.");
+FARG(map, "Loading", "Starts the game on a specific map.", "map",
+	"Starts a game on the given map. If it is not part of the game's episodes, it is played as a user map.");
+FARG(def, "Loading", "Uses a different main DEF file.", "file.def", "Uses the given DEF file instead of the game's default one.");
+FARG_ADVANCED(h, "Loading", "file.def", "Same as -def.");
+FARG(adddef, "Loading", "Loads additional DEF files.", "file1.def ...", "Loads the given DEF files after the main one.");
+FARG_ADVANCED(mh, "Loading", "file1.def ...", "Same as -adddef.");
+FARG(con, "Loading", "Uses a different main CON file.", "file.con", "Uses the given CON file instead of the game's default one.");
+FARG_ADVANCED(x, "Loading", "file.con", "Same as -con.");
+FARG_ADVANCED(ini, "Loading", "file.ini", "Same as -con. For Blood, the main INI file.");
+FARG(addcon, "Loading", "Loads additional CON files.", "file1.con ...", "Loads the given CON files after the main one.");
+FARG_ADVANCED(mx, "Loading", "file1.con ...", "Same as -addcon.");
+
+FARG(demo, "Play", "Plays a demo.", "file.dmo", "Plays back the given demo.");
+FARG_ADVANCED(playback, "Play", "file.dmo", "Same as -demo.");
+FARG_ADVANCED(d, "Play", "file.dmo", "Same as -demo.");
+FARG(name, "Play", "Sets the player name.", "name", "Sets the player name.");
+FARG_ADVANCED(pname, "Play", "name", "Same as -name.");
+FARG(nomonsters, "Play", "Prevents monsters from spawning in levels.", "", "Starts levels without monsters.");
+FARG_ADVANCED(nodudes, "Play", "", "Same as -nomonsters.");
+FARG_ADVANCED(nocreatures, "Play", "", "Same as -nomonsters.");
+FARG(nologo, "Play", "Skips the intro.", "", "Skips the logo screens at startup.");
+FARG_ADVANCED(quick, "Play", "", "Same as -nologo.");
+FARG(showcoords, "Debug", "Shows the player coordinates.", "", "Turns on the coordinate display.");
+FARG_ADVANCED(w, "Debug", "", "Same as -showcoords.");
+FARG(sounddebug, "Debug", "Shows sound debug information.", "", "Turns on the sound debug display.");
+FARG(getgames, "Debug", "Writes the list of detected games to a file.", "file",
+	"Scans for supported games, writes the list to the given file in JSON format and exits.");
+FARG(norun, "Debug", "Quits the game early to check for script errors.", "",
+	"Quits the game just before the main loop. To be used to check for errors in scripts without actually running the game.");
+FARG(dumpjit, "Debug", "Outputs the ZScript JIT-compilation result to a text file.", "",
+	"Outputs a result of the ZScript JIT-compilation to Assembler to the external file \"dumpjit.txt\".");
+FARG_CUSTOM(logfile, "+logfile", "Debug", false, "Copies console output to file", "log.txt",
+	"Copies output of console to file specified. File saving is relative to working directory");
+FARG_ADVANCED(devparm, "Deprecated", "", "Has no effect.");
+
+FARG(version, "Other", "Print version", "", "Print version and exit.");
+FARG_ADVANCED(v, "Other", "", "Print version and exit.");
+FARG(help, "Other", "Print help message", "", "Print help message and exit.");
+FARG_CUSTOM(help_all, "-help-all", "Other", false, "Print detailed help message", "", "Print full help message and exit.");
+#ifdef _WIN32
+FARG_CUSTOM(doshelp, "/?", "Other", false, "Print help message", "", "Print help message and exit.");
+#else
+FARG_CUSTOM(doshelp, "/?", "Other", true, "Print help message", "", "Print help message and exit.");
+#endif
+
 void UserConfig::ProcessOptions()
 {
 	// -help etc are omitted
 
 	// -cfg / -setupfile refer to Build style config which are not supported.
-	if (Args->CheckParm("-cfg") || Args->CheckParm("-setupfile"))
+	if (Args->CheckParm(FArg_cfg) || Args->CheckParm(FArg_setupfile))
 	{
 		Printf("Build-format config files not supported and will be ignored\n");
 	}
 
-	auto v = Args->CheckValue("-addon");
+	auto v = Args->CheckValue(FArg_addon);
 	if (v)
 	{
 		auto val = strtol(v, nullptr, 0);
@@ -333,21 +425,21 @@ void UserConfig::ProcessOptions()
 		if (val >= 0 && val < 4) gamegrp = addons[val];
 		else Printf("%s: Unknown Addon\n", v);
 	}
-	else if (Args->CheckParm("-nam"))
+	else if (Args->CheckParm(FArg_nam))
 	{
 		gamegrp = "NAM.GRP";
 	}
-	else if (Args->CheckParm("-napalm"))
+	else if (Args->CheckParm(FArg_napalm))
 	{
 		gamegrp = "NAPALM.GRP";
 	}
-	else if (Args->CheckParm("-ww2gi"))
+	else if (Args->CheckParm(FArg_ww2gi))
 	{
 		gamegrp = "WW2GI.GRP";
 	}
 	// Set up all needed content for these two mod which feature a very messy distribution.
 	// As an alternative they can be zipped up - the launcher will be able to detect and set up such versions automatically.
-	else if (Args->CheckParm("-route66"))
+	else if (Args->CheckParm(FArg_route66))
 	{
 		gamegrp = "REDNECK.GRP";
 		DefaultCon = "GAME66.CON";
@@ -358,7 +450,7 @@ void UserConfig::ProcessOptions()
 		toBeDeleted.Push("end66.anm*rr_outro.anm");
 		toBeDeleted.Push("end66.voc*ln_final.voc");
 	}
-	else if (Args->CheckParm("-cryptic"))
+	else if (Args->CheckParm(FArg_cryptic))
 	{
 		gamegrp = "BLOOD.RFF";
 		DefaultCon = "CRYPTIC.INI";
@@ -366,7 +458,7 @@ void UserConfig::ProcessOptions()
 		AddArt.reset(new FArgs(2, argv));
 	}
 
-	v = Args->CheckValue("-gamegrp");
+	v = Args->CheckValue(FArg_gamegrp);
 	if (v)
 	{
 		gamegrp = v;
@@ -374,7 +466,7 @@ void UserConfig::ProcessOptions()
 	else
 	{
 		// This is to enable the use of Doom launchers. that are limited to -iwad for specifying the game's main resource.
-		v = Args->CheckValue("-iwad");
+		v = Args->CheckValue(FArg_iwad);
 		if (v)
 		{
 			gamegrp = v;
@@ -382,61 +474,61 @@ void UserConfig::ProcessOptions()
 	}
 	FixPathSeperator(gamegrp);
 
-	Args->CollectFiles("-rts", ".rts");
-	auto rts = Args->CheckValue("-rts");
+	Args->CollectFiles(FArg_rts, ".rts");
+	auto rts = Args->CheckValue(FArg_rts);
 	if (rts) RTS_Init(rts);
 
-	Args->CollectFiles("-map", ".map");
-	CommandMap = Args->CheckValue("-map");
+	Args->CollectFiles(FArg_map, ".map");
+	CommandMap = Args->CheckValue(FArg_map);
 
-	static const char* defs[] = { "-def", "-h", nullptr };
-	Args->CollectFiles("-def", defs, ".def");
-	UserDef = Args->CheckValue("-def");
+	static const FArg* defs[] = { &FArg_def, &FArg_h, nullptr };
+	Args->CollectFiles(FArg_def, defs, ".def");
+	UserDef = Args->CheckValue(FArg_def);
 
 	if (DefaultCon.IsEmpty())
 	{
-		static const char* cons[] = { "-con", "-x", nullptr };
-		Args->CollectFiles("-con", cons, ".con");
-		DefaultCon = Args->CheckValue("-con");
-		if (DefaultCon.IsEmpty()) DefaultCon = Args->CheckValue("-ini");
+		static const FArg* cons[] = { &FArg_con, &FArg_x, nullptr };
+		Args->CollectFiles(FArg_con, cons, ".con");
+		DefaultCon = Args->CheckValue(FArg_con);
+		if (DefaultCon.IsEmpty()) DefaultCon = Args->CheckValue(FArg_ini);
 	}
 
-	static const char* demos[] = { "-playback", "-d", "-demo", nullptr };
-	Args->CollectFiles("-demo", demos, ".dmo");
-	CommandDemo = Args->CheckValue("-demo");
+	static const FArg* demos[] = { &FArg_playback, &FArg_d, &FArg_demo, nullptr };
+	Args->CollectFiles(FArg_demo, demos, ".dmo");
+	CommandDemo = Args->CheckValue(FArg_demo);
 
-	static const char* names[] = { "-pname", "-name", nullptr };
-	Args->CollectFiles("-name", names, ".---");	// this shouldn't collect any file names at all so use a nonsense extension
-	CommandName = Args->CheckValue("-name");
+	static const FArg* names[] = { &FArg_pname, &FArg_name, nullptr };
+	Args->CollectFiles(FArg_name, names, ".---");	// this shouldn't collect any file names at all so use a nonsense extension
+	CommandName = Args->CheckValue(FArg_name);
 
-	static const char* nomos[] = { "-nomonsters", "-nodudes", "-nocreatures", nullptr };
-	Args->CollectFiles("-nomonsters", nomos, ".---");	// this shouldn't collect any file names at all so use a nonsense extension
-	nomonsters = Args->CheckParm("-nomonsters");
+	static const FArg* nomos[] = { &FArg_nomonsters, &FArg_nodudes, &FArg_nocreatures, nullptr };
+	Args->CollectFiles(FArg_nomonsters, nomos, ".---");	// this shouldn't collect any file names at all so use a nonsense extension
+	nomonsters = Args->CheckParm(FArg_nomonsters);
 
-	static const char* acons[] = { "-addcon", "-mx", nullptr };
-	Args->CollectFiles("-addcon", acons, ".con");
-	AddCons.reset(Args->GatherFiles("-addcon"));
+	static const FArg* acons[] = { &FArg_addcon, &FArg_mx, nullptr };
+	Args->CollectFiles(FArg_addcon, acons, ".con");
+	AddCons.reset(Args->GatherFiles(FArg_addcon));
 
-	static const char* adefs[] = { "-adddef", "-mh", nullptr };
-	Args->CollectFiles("-adddef", adefs, ".def");
-	AddDefs.reset(Args->GatherFiles("-adddef"));
+	static const FArg* adefs[] = { &FArg_adddef, &FArg_mh, nullptr };
+	Args->CollectFiles(FArg_adddef, adefs, ".def");
+	AddDefs.reset(Args->GatherFiles(FArg_adddef));
 
-	Args->CollectFiles("-art", ".art");
-	AddArt.reset(Args->GatherFiles("-art"));
+	Args->CollectFiles(FArg_art, ".art");
+	AddArt.reset(Args->GatherFiles(FArg_art));
 
-	nologo = Args->CheckParm("-nologo") || Args->CheckParm("-quick");
-	nosound = Args->CheckParm("-nosfx") || Args->CheckParm("-nosound");
-	if (Args->CheckParm("-setup")) queryiwad = 1;
-	else if (Args->CheckParm("-nosetup")) queryiwad = 0;
+	nologo = Args->CheckParm(FArg_nologo) || Args->CheckParm(FArg_quick);
+	nosound = Args->CheckParm(FArg_nosfx) || Args->CheckParm(FArg_nosound);
+	if (Args->CheckParm(FArg_setup)) queryiwad = 1;
+	else if (Args->CheckParm(FArg_nosetup)) queryiwad = 0;
 
 
-	if (Args->CheckParm("-file"))
+	if (Args->CheckParm(FArg_file))
 	{
 		// For file loading there's two modes:
 		// If -file is given, all content will be processed in order and the legacy options be ignored entirely.
 		//This allows mixing directories and GRP files in arbitrary order.
-		Args->CollectFiles("-file", NULL);
-		AddFiles.reset(Args->GatherFiles("-file"));
+		Args->CollectFiles(FArg_file, nullptr);
+		AddFiles.reset(Args->GatherFiles(FArg_file));
 	}
 	else
 	{
@@ -445,20 +537,20 @@ void UserConfig::ProcessOptions()
 		// use -file instead which gives the user full control over the order in which things are added.
 		// For single mods this is no problem but don't even think about loading more stuff consistently...
 
-		static const char* grps[] = { "-g", "-grp", nullptr };
-		static const char* dirs[] = { "-game_dir", "-j",  nullptr };
-		static const char* rffs[] = { "-rff", "-snd",  nullptr };
-		static const char* twostep[] = { "-rff", "-grp",  nullptr };
+		static const FArg* grps[] = { &FArg_g, &FArg_grp, nullptr };
+		static const FArg* dirs[] = { &FArg_game_dir, &FArg_j,  nullptr };
+		static const FArg* rffs[] = { &FArg_rff, &FArg_snd,  nullptr };
+		static const FArg* twostep[] = { &FArg_rff, &FArg_grp,  nullptr };
 
 		// Abuse the inner workings to get the files into proper order. This is not 100% accurate but should work fine for everything that doesn't intentionally fuck things up.
-		Args->CollectFiles("-rff", rffs, ".rff");
-		Args->CollectFiles("-grp", grps, nullptr);
-		Args->CollectFiles("-grp", twostep, nullptr);	// The two previous calls have already brought the content in order so collecting it again gives us one list with everything.
-		AddFilesPre.reset(Args->GatherFiles("-grp"));
-		Args->CollectFiles("-game_dir", dirs, nullptr);
-		AddFiles.reset(Args->GatherFiles("-game_dir"));
+		Args->CollectFiles(FArg_rff, rffs, ".rff");
+		Args->CollectFiles(FArg_grp, grps, nullptr);
+		Args->CollectFiles(FArg_grp, twostep, nullptr);	// The two previous calls have already brought the content in order so collecting it again gives us one list with everything.
+		AddFilesPre.reset(Args->GatherFiles(FArg_grp));
+		Args->CollectFiles(FArg_game_dir, dirs, nullptr);
+		AddFiles.reset(Args->GatherFiles(FArg_game_dir));
 	}
-	if (Args->CheckParm("-showcoords") || Args->CheckParm("-w"))
+	if (Args->CheckParm(FArg_showcoords) || Args->CheckParm(FArg_w))
 	{
 		C_DoCommand("stat coord");
 	}
@@ -921,7 +1013,7 @@ void CreateStatusBar()
 
 void GetGames()
 {
-	auto getgames = Args->CheckValue("-getgames");
+	auto getgames = Args->CheckValue(FArg_getgames);
 	if (getgames)
 	{
 		try
@@ -1033,14 +1125,26 @@ int RunGame()
 	// load strings for picker window.
 	FileSys::FileSystem lang_fs;
 	std::vector<std::string> base_fn = { wad };
-	lang_fs.InitMultipleFiles(base_fn);
+	std::vector<std::string> no_optional_files;
+	lang_fs.InitMultipleFiles(base_fn, no_optional_files);
 	GStrings.LoadStrings(lang_fs, language);
 
 	// Set up the console before anything else so that it can receive text.
 	C_InitConsole(1024, 768, true);
 
+	// -h is not checked here: in Raze it is the EDuke32 alias for -def.
+	bool wantsVersion = Args->CheckParm(FArg_version) || Args->CheckParm(FArg_v);
+	bool wantsHelp = Args->CheckParm(FArg_help) || Args->CheckParm(FArg_help_all) || Args->CheckParm(FArg_doshelp);
+	if (wantsVersion || wantsHelp)
+	{
+		Printf("%s version %s\n", GAMENAME, GetVersionString());
+		if (wantsHelp)
+			FArgs::PrintHelpMessage(Args->CheckParm(FArg_help_all));
+		return 0;
+	}
+
 	// +logfile gets checked too late to catch the full startup log in the logfile so do some extra check for it here.
-	FString logfile = Args->TakeValue("+logfile");
+	FString logfile = Args->TakeValue(FArg_logfile);
 
 	// As long as this engine is still in prerelease mode let's always write a log file.
 	if (logfile.IsEmpty()) logfile.Format("%s" GAMENAMELOWERCASE ".log", M_GetDocumentsPath().GetChars());
@@ -1049,7 +1153,7 @@ int RunGame()
 	{
 		execLogfile(logfile.GetChars());
 	}
-	I_DetectOS();
+	Printf("%s\n", I_DetectOS().GetChars());
 	userConfig.ProcessOptions();
 	GetGames();
 	auto usedgroups = SetupGame();
@@ -1153,7 +1257,7 @@ int RunGame()
 	SetDefaultStrings();
 	Job_Init();
 	Local_Job_Init();
-	if (Args->CheckParm("-sounddebug"))
+	if (Args->CheckParm(FArg_sounddebug))
 		C_DoCommand("stat sounddebug");
 
 	SetupGameButtons();
@@ -1200,6 +1304,8 @@ int RunGame()
 	UpdateGenericUI(ui_generic);
 	PClassActor::StaticInit();
 	gi->FinalizeSetup();
+	if (Args->CheckParm(FArg_norun))
+		return 0;
 	MainLoop();
 	return 0;
 }

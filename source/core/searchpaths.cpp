@@ -68,9 +68,11 @@ void AddSearchPath(TArray<FString>& searchpaths, const char* path)
 
 #ifndef _WIN32
 
+TArray<FString> I_GetSteamPaths();
+
 void G_AddExternalSearchPaths(TArray<FString> &searchpaths)
 {
-	searchpaths.Append(I_GetSteamPath());
+	searchpaths.Append(I_GetSteamPaths());
 	searchpaths.Append(I_GetGogPaths());
 }
 
@@ -236,7 +238,7 @@ TArray<FString> CollectSearchPaths()
 					if (isalpha((uint8_t)nice[0] && nice[1] == ':' && nice[2] != '/')) continue;	// ignore drive relative paths because they are meaningless.
 #endif
 					// A path ending with "/*" means to add all subdirectories.
-					if (nice[nice.Len()-2] == '/' && nice[nice.Len()-1] == '*')
+					if (nice.Len() >= 2 && nice[nice.Len()-2] == '/' && nice[nice.Len()-1] == '*')
 					{
 						CollectSubdirectories(searchpaths, nice.GetChars());
 					}
@@ -259,7 +261,7 @@ TArray<FString> CollectSearchPaths()
 			isUNCpath = true;
 #endif
 		str.Substitute("//", "/");	// Double slashes can happen when constructing paths so just get rid of them here.
-		if (str.Back() == '/') str.Truncate(str.Len() - 1);
+		if (str.Len() > 0 && str.Back() == '/') str.Truncate(str.Len() - 1);
 #ifdef _WIN32
 		if (isUNCpath)
 			str = (FString)"/" + str;
