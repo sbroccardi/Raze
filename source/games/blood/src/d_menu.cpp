@@ -121,7 +121,7 @@ static std::unique_ptr<CGameMenuItemQAV> itemBloodQAV;	// This must be global to
 void UpdateNetworkMenus(void)
 {
 	// For now disable the network menu item as it is not functional.
-	for (auto name : { NAME_Mainmenu, NAME_IngameMenu })
+	for (auto name : { NAME_MainMenu, NAME_IngameMenu })
 	{
 		DMenuDescriptor** desc = MenuDescriptors.CheckKey(name);
 		if (desc != NULL && (*desc)->IsKindOf(RUNTIME_CLASS(DListMenuDescriptor)))

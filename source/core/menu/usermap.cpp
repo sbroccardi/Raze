@@ -258,6 +258,6 @@ DEFINE_ACTION_FUNCTION(_UsermapMenu, StartMap)
 	NewGameStartupInfo.Episode = -1;
 	NewGameStartupInfo.Level = -1;
 	NewGameStartupInfo.Map = SetupUserMap(entry->filename.GetChars(), g_gameType & GAMEFLAG_DUKE ? "dethtoll.mid" : nullptr);
-	M_SetMenu(NAME_Skillmenu, INT_MAX);
+	M_SetMenu(NAME_SkillMenu, INT_MAX);
 	return 0;
 }

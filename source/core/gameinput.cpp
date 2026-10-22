@@ -125,19 +125,19 @@ void GameInput::processMovement(const double turnscale, const bool allowstrafe, 
 	const auto hidspeed = getTicrateAngle(YAW_TURNSPEEDS[2]);
 
 	// get all input amounts.
-	const auto turning = buttonMap.ButtonDown(gamefunc_Turn_Right) -
-		buttonMap.ButtonDown(gamefunc_Turn_Left);
+	const auto turning = buttonMap.ButtonDownDigital(gamefunc_Turn_Right) -
+		buttonMap.ButtonDownDigital(gamefunc_Turn_Left);
 
-	const auto moving = buttonMap.ButtonDown(gamefunc_Move_Forward) -
-		buttonMap.ButtonDown(gamefunc_Move_Backward) +
+	const auto moving = buttonMap.ButtonDownDigital(gamefunc_Move_Forward) -
+		buttonMap.ButtonDownDigital(gamefunc_Move_Backward) +
 		joyAxes[JOYAXIS_Forward] * scaleAdjust;
 
-	const auto strafing = buttonMap.ButtonDown(gamefunc_Strafe_Right) -
-		buttonMap.ButtonDown(gamefunc_Strafe_Left) -
+	const auto strafing = buttonMap.ButtonDownDigital(gamefunc_Strafe_Right) -
+		buttonMap.ButtonDownDigital(gamefunc_Strafe_Left) -
 		joyAxes[JOYAXIS_Side] * scaleAdjust;
 
-	const auto soaring = buttonMap.ButtonDown(gamefunc_Move_Up) -
-		buttonMap.ButtonDown(gamefunc_Move_Down) +
+	const auto soaring = buttonMap.ButtonDownDigital(gamefunc_Move_Up) -
+		buttonMap.ButtonDownDigital(gamefunc_Move_Down) +
 		joyAxes[JOYAXIS_Up] * scaleAdjust;
 
 	// process player yaw input.
@@ -212,8 +212,8 @@ void GameInput::processVehicle(const double baseVel, const double velScale, cons
 
 	if ((keymove = !!(flags & VEH_CANMOVE)))
 	{
-		const auto kbdForwards = buttonMap.ButtonDown(gamefunc_Move_Forward) || buttonMap.ButtonDown(gamefunc_Strafe);
-		const auto kbdBackward = buttonMap.ButtonDown(gamefunc_Move_Backward);
+		const auto kbdForwards = buttonMap.ButtonDownDigital(gamefunc_Move_Forward) || buttonMap.ButtonDown(gamefunc_Strafe);
+		const auto kbdBackward = buttonMap.ButtonDownDigital(gamefunc_Move_Backward);
 		thisInput.vel.X = kbdForwards - kbdBackward + joyAxes[JOYAXIS_Forward];
 		inputBuffer.vel.X += thisInput.vel.X;
 
@@ -224,8 +224,8 @@ void GameInput::processVehicle(const double baseVel, const double velScale, cons
 	if (flags & VEH_CANTURN)
 	{
 		// Keyboard turning.
-		const auto kbdLeft = buttonMap.ButtonDown(gamefunc_Turn_Left) || buttonMap.ButtonDown(gamefunc_Strafe_Left);
-		const auto kbdRight = buttonMap.ButtonDown(gamefunc_Turn_Right) || buttonMap.ButtonDown(gamefunc_Strafe_Right);
+		const auto kbdLeft = buttonMap.ButtonDownDigital(gamefunc_Turn_Left) || buttonMap.ButtonDownDigital(gamefunc_Strafe_Left);
+		const auto kbdRight = buttonMap.ButtonDownDigital(gamefunc_Turn_Right) || buttonMap.ButtonDownDigital(gamefunc_Strafe_Right);
 		const auto kbdDir = kbdRight - kbdLeft;
 
 		// Input device turning.
@@ -291,13 +291,13 @@ void GameInput::processInputBits()
 	inputBuffer.actions |= ActionsToSend;
 	ActionsToSend = 0;
 
-	if (buttonMap.ButtonDown(gamefunc_Aim_Up) || (buttonMap.ButtonDown(gamefunc_Dpad_Aiming) && joyAxes[JOYAXIS_Forward] > 0)) 
+	if (buttonMap.ButtonDownDigital(gamefunc_Aim_Up) || (buttonMap.ButtonDown(gamefunc_Dpad_Aiming) && joyAxes[JOYAXIS_Forward] > 0)) 
 	{
 		inputBuffer.actions |= SB_AIM_UP;
 		inputBuffer.actions &= ~SB_CENTERVIEW;
 	}
 
-	if ((buttonMap.ButtonDown(gamefunc_Aim_Down) || (buttonMap.ButtonDown(gamefunc_Dpad_Aiming) && joyAxes[JOYAXIS_Forward] < 0))) 
+	if ((buttonMap.ButtonDownDigital(gamefunc_Aim_Down) || (buttonMap.ButtonDown(gamefunc_Dpad_Aiming) && joyAxes[JOYAXIS_Forward] < 0))) 
 	{
 		inputBuffer.actions |= SB_AIM_DOWN;
 		inputBuffer.actions &= ~SB_CENTERVIEW;
@@ -374,7 +374,12 @@ void GameInput::getInput(InputPacket* packet)
 		return;
 	}
 
-	I_GetAxes(joyAxes);
+	buttonMap.GetAxes();
+	joyAxes[JOYAXIS_Yaw] = buttonMap.ButtonAnalog(gamefunc_Turn_Left) - buttonMap.ButtonAnalog(gamefunc_Turn_Right);
+	joyAxes[JOYAXIS_Pitch] = buttonMap.ButtonAnalog(gamefunc_Aim_Up) - buttonMap.ButtonAnalog(gamefunc_Aim_Down);
+	joyAxes[JOYAXIS_Forward] = buttonMap.ButtonAnalog(gamefunc_Move_Forward) - buttonMap.ButtonAnalog(gamefunc_Move_Backward);
+	joyAxes[JOYAXIS_Side] = buttonMap.ButtonAnalog(gamefunc_Strafe_Left) - buttonMap.ButtonAnalog(gamefunc_Strafe_Right);
+	joyAxes[JOYAXIS_Up] = buttonMap.ButtonAnalog(gamefunc_Move_Up) - buttonMap.ButtonAnalog(gamefunc_Move_Down);
 	processInputBits();
 	if (!paused) gi->doPlayerMovement();
 	mouseInput.Zero();

@@ -823,16 +823,21 @@ static TArray<GrpEntry> SetupGame()
 				if (autoloadbrightmaps) flags |= 4;
 				if (autoloadwidescreen) flags |= 8;
 
-				FString extraArgs;
-				pick = I_PickIWad(&wads[0], (int)wads.Size(), queryiwad, pick, flags, extraArgs);
-				if (pick >= 0)
+				FStartupSelectionInfo info = FStartupSelectionInfo(wads, *Args, flags);
+				if (pick >= 0) info.DefaultIWAD = pick;
+				if (I_PickIWad(queryiwad, info))
 				{
-					disableautoload = !!(flags & 1);
-					autoloadlights = !!(flags & 2);
-					autoloadbrightmaps = !!(flags & 4);
-					autoloadwidescreen = !!(flags & 8);
+					pick = info.SaveInfo();
+					disableautoload = !!(info.DefaultStartFlags & 1);
+					autoloadlights = !!(info.DefaultStartFlags & 2);
+					autoloadbrightmaps = !!(info.DefaultStartFlags & 4);
+					autoloadwidescreen = !!(info.DefaultStartFlags & 8);
 					// The newly selected IWAD becomes the new default
 					defaultiwad = groups[pick].FileInfo.name.GetChars();
+				}
+				else
+				{
+					pick = -1;
 				}
 				groupno = pick;
 			}

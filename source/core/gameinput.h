@@ -17,6 +17,17 @@ enum : unsigned
 	VEH_SCALETURN = 4,
 };
 
+// Analog input, built from the analog state of the bound game buttons.
+enum EJoyAxis
+{
+	JOYAXIS_Yaw,		// positive turns left
+	JOYAXIS_Pitch,		// positive aims up
+	JOYAXIS_Forward,	// positive moves forward
+	JOYAXIS_Side,		// positive strafes left
+	JOYAXIS_Up,			// positive moves up
+	NUM_JOYAXIS,
+};
+
 class GameInput
 {
 	/*

@@ -243,7 +243,7 @@ static void GameTicker()
 			gi->FreeLevelData();
 			gamestate = GS_MENUSCREEN;
 			M_StartControlPanel(ga == ga_mainmenu);
-			M_SetMenu(NAME_Mainmenu);
+			M_SetMenu(NAME_MainMenu);
 			break;
 
 		case ga_creditsmenu:
@@ -251,7 +251,7 @@ static void GameTicker()
 			gi->FreeLevelData();
 			gamestate = GS_MENUSCREEN;
 			M_StartControlPanel(false);
-			M_SetMenu(NAME_Mainmenu);
+			M_SetMenu(NAME_MainMenu);
 			M_SetMenu(NAME_CreditsMenu);
 			break;
 

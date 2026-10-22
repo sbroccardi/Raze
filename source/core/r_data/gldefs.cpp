@@ -96,12 +96,12 @@ static void do_uniform_set(float value, ExtraUniformCVARData* data)
 		do_uniform_set(value, data->Next);
 }
 
-void uniform_callback_int(FIntCVar &self)
+void uniform_callback_int(FIntCVar &self, FIntCVar::ValueType prev)
 {
 	do_uniform_set ((float)self, (ExtraUniformCVARData*)self.GetExtraDataPointer());
 }
 
-void uniform_callback_float(FFloatCVar &self)
+void uniform_callback_float(FFloatCVar &self, FFloatCVar::ValueType prev)
 {
 	do_uniform_set ((float)self, (ExtraUniformCVARData*)self.GetExtraDataPointer());
 }
@@ -1541,17 +1541,17 @@ class GLDefsParser
 						ECVarType cvartype = CVAR_Dummy;
 						int cvarflags = CVAR_MOD|CVAR_ARCHIVE|CVAR_VIRTUAL;
 						FBaseCVar *cvar;
-						void (*callback)(FBaseCVar&) = NULL;
+						void *callback = nullptr;
 						FString cvarname;
 						switch (parsedType)
 						{
 						case PostProcessUniformType::Int:
 							cvartype = CVAR_Int;
-							callback = (void (*)(FBaseCVar&))uniform_callback_int;
+							callback = reinterpret_cast<void*>(uniform_callback_int);
 							break;
 						case PostProcessUniformType::Float:
 							cvartype = CVAR_Float;
-							callback = (void (*)(FBaseCVar&))uniform_callback_float;
+							callback = reinterpret_cast<void*>(uniform_callback_float);
 							break;
 						default:
 							sc.ScriptError("'%s' not supported for CVAR uniforms!", strUniformType);

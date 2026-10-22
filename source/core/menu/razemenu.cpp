@@ -134,11 +134,11 @@ bool M_SetSpecialMenu(FName& menu, int param)
 
 	switch (menu.GetIndex())
 	{
-	case NAME_Mainmenu:
+	case NAME_MainMenu:
 		if (gi->CanSave()) menu = NAME_IngameMenu;
 		break;
 
-	case NAME_Skillmenu:
+	case NAME_SkillMenu:
 		// sent from the episode or user map menu
 		if (param != INT_MAX)
 		{
@@ -160,7 +160,7 @@ bool M_SetSpecialMenu(FName& menu, int param)
 		}
 		return false;
 
-	case NAME_Savegamemenu:
+	case NAME_SavegameMenu:
 		if (!gi->CanSave())
 		{
 			// cannot save outside the game.
@@ -169,7 +169,7 @@ bool M_SetSpecialMenu(FName& menu, int param)
 		}
 		break;
 
-	case NAME_Quitmenu:
+	case NAME_QuitMenu:
 		// This is no separate class
 		C_DoCommand("menu_quit");
 		return false;
@@ -292,7 +292,7 @@ CCMD(quicksave)
 	if (savegameManager.quickSaveSlot == NULL || savegameManager.quickSaveSlot == (FSaveGameNode*)1)
 	{
 		M_StartControlPanel(true);
-		M_SetMenu(NAME_Savegamemenu);
+		M_SetMenu(NAME_SavegameMenu);
 		return;
 	}
 
@@ -338,7 +338,7 @@ CCMD(quickload)
 		M_StartControlPanel(true);
 		// signal that whatever gets loaded should be the new quicksave
 		savegameManager.quickSaveSlot = (FSaveGameNode*)1;
-		M_SetMenu(NAME_Loadgamemenu);
+		M_SetMenu(NAME_LoadgameMenu);
 		return;
 	}
 
@@ -395,7 +395,7 @@ static void BuildEpisodeMenu()
 	// Build episode menu
 	int addedVolumes = 0;
 	bool textadded = false;
-	DMenuDescriptor** desc = MenuDescriptors.CheckKey(NAME_Episodemenu);
+	DMenuDescriptor** desc = MenuDescriptors.CheckKey(NAME_EpisodeMenu);
 	if (desc != nullptr && (*desc)->IsKindOf(RUNTIME_CLASS(DListMenuDescriptor)))
 	{
 		DListMenuDescriptor* ld = static_cast<DListMenuDescriptor*>(*desc);
@@ -416,7 +416,7 @@ static void BuildEpisodeMenu()
 			{
 				bool isShareware = ((g_gameType & GAMEFLAG_DUKE) && (g_gameType & GAMEFLAG_SHAREWARE) && (vol.flags & VF_SHAREWARELOCK));
 				auto it = CreateCustomListMenuItemText(ld->mXpos, y, ld->mLinespacing, vol.name[0],
-					vol.name.GetChars(), ld->mFont, CR_UNTRANSLATED, int(isShareware), NAME_Skillmenu, vol.index); // font colors are not used, so hijack one for the shareware flag.
+					vol.name.GetChars(), ld->mFont, CR_UNTRANSLATED, int(isShareware), NAME_SkillMenu, vol.index); // font colors are not used, so hijack one for the shareware flag.
 
 				y += ld->mLinespacing;
 				ld->mItems.Push(it);
@@ -448,7 +448,7 @@ static void BuildEpisodeMenu()
 
 	// Build skill menu
 	int addedSkills = 0;
-	desc = MenuDescriptors.CheckKey(NAME_Skillmenu);
+	desc = MenuDescriptors.CheckKey(NAME_SkillMenu);
 	// If the skill names list ios empty, a predefined menu is assumed
 	if (desc != nullptr && gSkillNames[0].IsNotEmpty() && (*desc)->IsKindOf(RUNTIME_CLASS(DListMenuDescriptor)))
 	{
@@ -668,7 +668,7 @@ CCMD(menu_main)
 {
 	if (gamestate == GS_FULLCONSOLE) gamestate = GS_MENUSCREEN;
 	M_StartControlPanel(true);
-	M_SetMenu(NAME_Mainmenu, -1);
+	M_SetMenu(NAME_MainMenu, -1);
 }
 
 CCMD(openhelpmenu)
@@ -685,14 +685,14 @@ CCMD(opensavemenu)
 	if (gi->CanSave())
 	{
 		M_StartControlPanel(true);
-		M_SetMenu(NAME_Savegamemenu);
+		M_SetMenu(NAME_SavegameMenu);
 	}
 }
 
 CCMD(openloadmenu)
 {
 	M_StartControlPanel(true);
-	M_SetMenu(NAME_Loadgamemenu);
+	M_SetMenu(NAME_LoadgameMenu);
 }
 
 

@@ -601,6 +601,9 @@ file( GLOB HEADER_FILES
 	common/rendering/vulkan/textures/*.h
 	common/scripting/core/*h
 	common/scripting/vm/*h
+	common/scripting/dap/*.h
+	common/scripting/dap/Nodes/*.h
+	common/scripting/dap/Protocol/*.h
 	common/scripting/jit/*h
 	common/scripting/interface/*.h
 	common/scripting/backend/*.h
@@ -1021,6 +1024,7 @@ set (PCH_SOURCES
 	launcher/launcherbuttonbar.cpp
 	launcher/playgamepage.cpp
 	launcher/settingspage.cpp
+	launcher/networkpage.cpp
 
 	common/audio/sound/i_sound.cpp
 	common/audio/sound/oalsound.cpp
@@ -1130,6 +1134,7 @@ set (PCH_SOURCES
 	common/utility/name.cpp
 	common/utility/r_memory.cpp
 	common/utility/writezip.cpp
+	common/utility/vga2ansi.cpp
 	common/thirdparty/base64.cpp
 	common/thirdparty/md5.cpp
  	common/thirdparty/superfasthash.cpp
@@ -1151,6 +1156,7 @@ set (PCH_SOURCES
 	common/engine/renderstyle.cpp
 	common/engine/v_colortables.cpp
 	common/engine/serializer.cpp
+	common/engine/m_haptics.cpp
 	common/engine/m_joy.cpp
 	common/engine/m_random.cpp
 	common/objects/autosegs.cpp
@@ -1170,6 +1176,7 @@ set (PCH_SOURCES
 	common/rendering/v_video.cpp
 	common/rendering/r_thread.cpp
 	common/rendering/r_videoscale.cpp
+	common/rendering/stb_include.cpp
 	common/rendering/hwrenderer/hw_draw2d.cpp
 	common/rendering/hwrenderer/data/hw_clock.cpp
 	common/rendering/hwrenderer/data/hw_skydome.cpp
@@ -1389,6 +1396,7 @@ include_directories(
 	../libraries/ZVulkan/include
 	../libraries/ZWidget/include
 	../libraries/webp/include
+	../libraries/range_map/include
 	${SYSTEM_SOURCES_DIR}
 )
 
